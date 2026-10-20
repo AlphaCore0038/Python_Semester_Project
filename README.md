@@ -67,7 +67,7 @@ or Tkinter clients and are never committed to Git.
 | 1 | Repository foundation (this) | **Complete** |
 | 2 | Supabase schema + private storage bucket | **Complete** |
 | 3 | FastAPI core + smoke test | **Complete** |
-| 4 | Authentication (register/login, JWT, admin bootstrap) | Not started |
+| 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | Not started |
 | 6 | Django web client | Not started |
 | 7 | Tkinter desktop client | Not started |
@@ -108,6 +108,26 @@ py -m pytest
 
 The web (`web/`) and desktop (`desktop/`) clients get their own venvs when those
 clients are built (later phases).
+
+## Authentication (Phase 4)
+
+FastAPI-managed email/password auth against the `public.users` table
+(no Supabase Auth). Passwords are bcrypt-hashed; access tokens are HS256 JWTs
+signed with `JWT_SECRET`, valid for `JWT_EXPIRY_MINUTES` (default 24 h).
+
+```bat
+:: With the server running (uvicorn app.main:app --reload):
+curl -X POST http://127.0.0.1:8000/auth/register -H "Content-Type: application/json" -d "{\"email\":\"demo@example.com\",\"password\":\"correct-horse-1\"}"
+curl -X POST http://127.0.0.1:8000/auth/login    -H "Content-Type: application/json" -d "{\"email\":\"demo@example.com\",\"password\":\"correct-horse-1\"}"
+curl http://127.0.0.1:8000/auth/me -H "Authorization: Bearer <access_token>"
+```
+
+Rules enforced by the API: emails are normalized to lowercase (duplicate
+registration is case-insensitive); passwords must be 8–72 UTF-8 bytes (never
+truncated); `is_admin` cannot be set through registration; login returns one
+generic error for wrong password or unknown email; the authenticated user id
+comes only from the verified JWT. Tests use an in-memory fake store — no real
+Supabase project or `.env` is needed for `py -m pytest`.
 
 Supabase notes: project `ai-digital-locker` (ap-south-1); tables `public.users`
 and `public.documents` with RLS enabled; private Storage bucket `documents`.
