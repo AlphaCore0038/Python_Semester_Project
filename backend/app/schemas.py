@@ -103,3 +103,53 @@ class UsageResponse(BaseModel):
     used_bytes: int
     quota_bytes: int
     document_count: int
+
+
+class AskRequest(BaseModel):
+    question: str
+
+    @field_validator("question")
+    @classmethod
+    def _check_question(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("Question must not be empty")
+        if len(text) > 1000:
+            raise ValueError("Question must be at most 1000 characters")
+        return text
+
+
+class DocumentIdRequest(BaseModel):
+    document_id: str
+
+
+class DocumentSource(BaseModel):
+    document_id: str
+    filename: str
+
+
+class AIStatusResponse(BaseModel):
+    configured: bool
+    provider: str
+    model: str
+    local_ai: str
+
+
+class AskResponse(BaseModel):
+    answer: str
+    sources: list[DocumentSource]
+    model: str
+    relevant_documents_found: bool
+
+
+class SummarizeResponse(BaseModel):
+    summary: str
+    sources: list[DocumentSource]
+    model: str
+
+
+class SuggestFilenameResponse(BaseModel):
+    current_filename: str
+    suggested_filename: str
+    reason: str
+    model: str

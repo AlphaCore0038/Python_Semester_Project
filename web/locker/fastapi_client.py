@@ -113,3 +113,23 @@ def rename(token, document_id, filename):
 
 def delete(token, document_id):
     _call("DELETE", f"/documents/{document_id}", token=token)
+
+
+def ai_status(token):
+    return _call("GET", "/ai/status", token=token).json()
+
+
+def ai_ask(token, question):
+    return _call("POST", "/ai/ask", token=token, json={"question": question}).json()
+
+
+def ai_summarize(token, document_id):
+    return _call(
+        "POST", "/ai/summarize", token=token, json={"document_id": document_id}
+    ).json()
+
+
+def ai_suggest_filename(token, document_id):
+    return _call(
+        "POST", "/ai/suggest-filename", token=token, json={"document_id": document_id}
+    ).json()

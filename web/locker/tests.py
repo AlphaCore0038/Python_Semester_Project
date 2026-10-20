@@ -431,3 +431,133 @@ class ErrorDetailTests(TestCase):
                 return {"detail": [{"msg": "bad"}]}
 
         self.assertEqual(fastapi_client._detail(R()), "[{'msg': 'bad'}]")
+
+
+AI_STATUS = {
+    "configured": True,
+    "provider": "openrouter",
+    "model": "minimax/minimax-m3.1-flash:free",
+    "local_ai": "unavailable",
+}
+
+ASK_RESULT = {
+    "answer": "Your registration number is 12345.",
+    "sources": [
+        {"document_id": DOC["id"], "filename": "internship_certificate.txt"}
+    ],
+    "model": "minimax/minimax-m3.1-flash:free",
+    "relevant_documents_found": True,
+}
+
+NO_MATCH_RESULT = {
+    "answer": "I couldn't find any documents that look relevant to that question.",
+    "sources": [],
+    "model": "minimax/minimax-m3.1-flash:free",
+    "relevant_documents_found": False,
+}
+
+SUMMARIZE_RESULT = {
+    "summary": "Q3 revenue rose 12%.",
+    "sources": [{"document_id": DOC["id"], "filename": "report.txt"}],
+    "model": "minimax/minimax-m3.1-flash:free",
+}
+
+SUGGEST_RESULT = {
+    "current_filename": "file1.txt",
+    "suggested_filename": "internship_certificate_2026.txt",
+    "reason": "Proposal only - renaming requires your confirmation.",
+    "model": "minimax/minimax-m3.1-flash:free",
+}
+
+
+class AITests(MockedAPITestCase):
+    def _seed_ai(self):
+        self._seed_session()
+        self.route("GET", "/ai/status", json_data=AI_STATUS)
+        self._api_doc_calls()
+
+    def test_ai_page_requires_login(self):
+        resp = self.client.get(reverse("locker:ai"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith("/login"), resp.url)
+
+    def test_ai_page_shows_status_and_local_placeholder(self):
+        self._seed_ai()
+        resp = self.client.get(reverse("locker:ai"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "minimax/minimax-m3.1-flash:free")
+        self.assertContains(resp, "Local AI")
+        self.assertContains(resp, "unavailable")
+
+    def test_ask_returns_answer_with_sources(self):
+        self._seed_ai()
+        self.route("POST", "/ai/ask", json_data=ASK_RESULT)
+        resp = self.client.post(reverse("locker:ai"), {"action": "ask", "question": "What is my registration number?"})
+        self.assertContains(resp, "Your registration number is 12345.")
+        self.assertContains(resp, "internship_certificate.txt")
+        method, url, kw = self.calls[-1]
+        self.assertEqual(method, "POST")
+        self.assertTrue(url.endswith("/ai/ask"))
+        self.assertEqual(kw["json"], {"question": "What is my registration number?"})
+
+    def test_ask_with_no_relevant_documents_shows_honest_answer(self):
+        self._seed_ai()
+        self.route("POST", "/ai/ask", json_data=NO_MATCH_RESULT)
+        resp = self.client.post(reverse("locker:ai"), {"action": "ask", "question": "quantum rockets"})
+        self.assertContains(resp, "couldn&#x27;t find any documents")
+
+    def test_summarize_shows_summary(self):
+        self._seed_ai()
+        self.route("POST", "/ai/summarize", json_data=SUMMARIZE_RESULT)
+        resp = self.client.post(
+            reverse("locker:ai"),
+            {"action": "summarize", "document_id": DOC["id"]},
+        )
+        self.assertContains(resp, "Q3 revenue rose 12%.")
+
+    def test_suggest_is_proposal_with_confirm_link_to_existing_rename(self):
+        self._seed_ai()
+        self.route("POST", "/ai/suggest-filename", json_data=SUGGEST_RESULT)
+        resp = self.client.post(
+            reverse("locker:ai"),
+            {"action": "suggest", "document_id": DOC["id"]},
+        )
+        self.assertContains(resp, "internship_certificate_2026.txt")
+        rename_url = reverse("locker:rename", kwargs={"document_id": DOC["id"]})
+        self.assertContains(resp, rename_url)
+
+    def test_provider_503_shows_safe_message(self):
+        self._seed_ai()
+        self.route(
+            "POST", "/ai/ask", status=503,
+            json_data={"detail": "The AI provider is busy. Please try again shortly."},
+        )
+        resp = self.client.post(reverse("locker:ai"), {"action": "ask", "question": "hi"})
+        self.assertContains(resp, "busy")
+
+    def test_unsupported_format_shows_422_detail(self):
+        self._seed_ai()
+        self.route(
+            "POST", "/ai/summarize", status=422,
+            json_data={"detail": "Text extraction is not supported for this format yet."},
+        )
+        resp = self.client.post(
+            reverse("locker:ai"),
+            {"action": "summarize", "document_id": DOC["id"]},
+        )
+        self.assertContains(resp, "not supported")
+
+    def test_session_expired_on_ai_redirects_to_login(self):
+        self._seed_session()
+        self.route("GET", "/ai/status", status=401, json_data={"detail": "Invalid token"})
+        resp = self.client.get(reverse("locker:ai"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith("/login"), resp.url)
+
+    def test_floating_ai_button_visible_only_when_logged_in(self):
+        self._seed_ai()
+        logged_in = self.client.get(reverse("locker:dashboard"))
+        self.assertContains(logged_in, 'class="floating-ai"')
+        self.client.post(reverse("locker:logout"))
+        logged_out = self.client.get(reverse("locker:login"))
+        self.assertNotContains(logged_out, 'class="floating-ai"')

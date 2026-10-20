@@ -45,8 +45,12 @@
     .inline-form { display: inline; }
     .errlist { color: #a4262c; margin: 0.4rem 0; }
     .placeholder-ai { text-align: center; color: #9aa3af; font-size: 0.85rem; margin-top: 2rem; }
-    {# Floating AI button slot: reserved for the AI phase; intentionally empty now. #}
-    .floating-ai { display: none; }
+    .floating-ai {
+      position: fixed; bottom: 1.4rem; right: 1.4rem; display: inline-block;
+      background: #2563eb; color: #fff; padding: 0.65rem 1.1rem; border-radius: 999px;
+      text-decoration: none; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.25); z-index: 50;
+    }
+    .floating-ai:hover { background: #1d4fd8; }
   </style>
 </head>
 <body>
@@ -72,8 +76,9 @@
       {% endfor %}
     {% endif %}
     {% block content %}{% endblock %}
-    {# Spec placeholder for the floating AI assistant (AI phase only). #}
-    <div class="floating-ai"></div>
+    {% if request.session.api_token %}
+      <a class="floating-ai" href="{% url 'locker:ai' %}">AI</a>
+    {% endif %}
   </main>
 </body>
 </html>

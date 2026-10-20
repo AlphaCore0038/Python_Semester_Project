@@ -319,3 +319,72 @@ def delete_confirm(request, document_id):
 
     messages.success(request, "Document deleted.")
     return redirect("locker:dashboard")
+
+
+@require_http_methods(["GET", "POST"])
+def ai(request):
+    """AI assistant page (spec 13): ask, summarize, suggest filename.
+
+    Suggested filenames are proposals only - applying one goes through the
+    existing rename confirmation page with its own validation.
+    """
+    token = request.session.get("api_token")
+    if not token:
+        return _login_redirect(request)
+
+    context = {"result": None, "ai_status": None, "documents": []}
+    try:
+        context["ai_status"] = fastapi_client.ai_status(token)
+        context["documents"] = fastapi_client.list_documents(token)
+    except fastapi_client.FastAPIError as exc:
+        if exc.status_code == 401:
+            return _session_expired(request)
+        messages.error(
+            request,
+            "Cannot reach the service right now. Please try again."
+            if exc.status_code == 0
+            else "AI is unavailable right now. Please try again.",
+        )
+        return redirect("locker:dashboard")
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        document_id = request.POST.get("document_id", "")
+        try:
+            if action == "ask":
+                question = request.POST.get("question", "").strip()
+                if not question:
+                    messages.error(request, "Type a question first.")
+                else:
+                    context["result"] = {
+                        "kind": "ask",
+                        "data": fastapi_client.ai_ask(token, question),
+                    }
+            elif action == "summarize":
+                context["result"] = {
+                    "kind": "summarize",
+                    "data": fastapi_client.ai_summarize(token, document_id),
+                }
+            elif action == "suggest":
+                context["result"] = {
+                    "kind": "suggest",
+                    "document_id": document_id,
+                    "data": fastapi_client.ai_suggest_filename(token, document_id),
+                }
+        except fastapi_client.FastAPIError as exc:
+            if exc.status_code == 401:
+                return _session_expired(request)
+            if exc.status_code == 404:
+                messages.error(request, "Document not found.")
+            elif exc.status_code == 422:
+                messages.error(request, exc.detail or "The AI could not process that.")
+            elif exc.status_code == 503:
+                messages.error(
+                    request, exc.detail or "The AI is unavailable right now."
+                )
+            elif exc.status_code == 0:
+                messages.error(request, "Cannot reach the service right now.")
+            else:
+                messages.error(request, "The AI request failed. Please try again.")
+
+    return render(request, "locker/ai.html", context)

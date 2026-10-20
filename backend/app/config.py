@@ -38,7 +38,18 @@ class Settings(BaseSettings):
     jwt_expiry_minutes: int = 1440
     admin_email: str = ""
     openrouter_api_key: str = ""
-    openrouter_model: str = "xiaomi/mimo-v2.6-flash:free"
+    # MiniMax M3.1 Flash via OpenRouter's free route (verified 2026-10-19).
+    # No fallback model. The free route's availability is not guaranteed;
+    # provider failures surface as clear 503s, never silent switches.
+    openrouter_model: str = "minimax/minimax-m3.1-flash:free"
+    # Always-on reasoning models think before answering; "low" keeps latency
+    # acceptable for a chat UI. Override via OPENROUTER_REASONING_EFFORT.
+    openrouter_reasoning_effort: str = "low"
+    ai_max_output_tokens: int = 700
+    ai_context_doc_chars: int = 8000
+    ai_context_total_chars: int = 24000
+    ai_summary_chars: int = 16000
+    ai_suggest_chars: int = 4000
     storage_quota_bytes: int = 524_288_000  # 500 MB per user (spec)
     max_upload_bytes: int = 52_428_800  # 50 MB: Supabase Free per-file limit
 

@@ -211,8 +211,9 @@ class MainView(tk.Frame):
                                       command=self._save_offline)
         self.rename_btn = ttk.Button(frame, text="Rename…", command=self._rename)
         self.delete_btn = ttk.Button(frame, text="Delete", command=self._delete)
+        self.ai_btn = ttk.Button(frame, text="AI Assistant", command=self._open_ai)
         for button in (self.upload_btn, self.download_btn, self.offline_btn,
-                       self.rename_btn, self.delete_btn):
+                       self.rename_btn, self.delete_btn, self.ai_btn):
             button.pack(side="left", padx=(0, 6))
 
     def _build_status(self):
@@ -544,3 +545,200 @@ class MainView(tk.Frame):
         self._begin("Deleting…")
         self.runner.submit(work, on_success=ok, on_error=self._handle_error,
                            on_done=self._end)
+
+    # ---- AI assistant --------------------------------------------------
+
+    def _open_ai(self):
+        if self.runner.busy:
+            return
+        AIDialog(self, self.client, self.store, self.runner, self.session,
+                 on_renamed=self.after_idle(self.refresh))
+
+
+class AIDialog(tk.Toplevel):
+    """Compact AI chat window (spec 13). Local AI is a visibly disabled
+    placeholder; suggestions are proposals applied via the existing
+    client.rename path after a confirmation prompt."""
+
+    def __init__(self, parent, client, store, runner, session: Session,
+                 on_renamed=None):
+        super().__init__(parent)
+        self.title("AI Assistant")
+        self.geometry("560x520")
+        self.transient(parent)
+        self.client = client
+        self.store = store
+        self.runner = runner
+        self.session = session
+        self.on_renamed = on_renamed
+        self._docs: list[dict] = []
+
+        self._build()
+
+    def _build(self):
+        top = ttk.Frame(self, padding=8)
+        top.pack(fill="x")
+        ttk.Label(top, text="Cloud AI (OpenRouter)").pack(anchor="w")
+        local_var = tk.StringVar(value="Local AI - unavailable (planned)")
+        local_radio = ttk.Radiobutton(
+            top, text="Local AI", variable=local_var,
+            value="Local AI - unavailable (planned)", state="disabled",
+        )
+        local_radio.pack(anchor="w")
+        self.status_var = tk.StringVar(value="Loading AI status…")
+        ttk.Label(top, textvariable=self.status_var, foreground="#a4262c").pack(
+            anchor="w"
+        )
+
+        mode_frame = ttk.Frame(self, padding=(8, 0, 8, 0))
+        mode_frame.pack(fill="x")
+        self.mode_var = tk.StringVar(value="ask")
+        ttk.Radiobutton(mode_frame, text="Ask a question", variable=self.mode_var,
+                        value="ask", command=self._sync_mode).pack(side="left")
+        ttk.Radiobutton(mode_frame, text="Summarize selected document",
+                        variable=self.mode_var, value="summarize",
+                        command=self._sync_mode).pack(side="left", padx=(8, 0))
+        ttk.Radiobutton(mode_frame, text="Suggest filename for selected document",
+                        variable=self.mode_var, value="suggest",
+                        command=self._sync_mode).pack(side="left", padx=(8, 0))
+
+        ask_frame = ttk.Frame(self, padding=(8, 4, 8, 0))
+        ask_frame.pack(fill="x")
+        ttk.Label(ask_frame, text="Question").pack(anchor="w")
+        self.question_var = tk.StringVar()
+        self.question_entry = ttk.Entry(ask_frame, textvariable=self.question_var)
+        self.question_entry.pack(fill="x")
+
+        doc_frame = ttk.Frame(self, padding=(8, 4, 8, 0))
+        doc_frame.pack(fill="x")
+        ttk.Label(doc_frame, text="Selected document").pack(anchor="w")
+        self.doc_label = ttk.Label(doc_frame, text="(select a document in the table behind this window)")
+        self.doc_label.pack(anchor="w")
+
+        self.send_btn = ttk.Button(self, text="Send", command=self._send)
+        self.send_btn.pack(pady=(6, 0))
+
+        self.result_text = tk.Text(self, height=12, wrap="word", state="disabled")
+        self.result_text.pack(fill="both", expand=True, padx=8, pady=8)
+        self.sources_label = ttk.Label(self, text="", padding=(8, 0, 8, 4))
+        self.sources_label.pack(fill="x")
+        self.apply_btn = ttk.Button(self, text="Apply filename suggestion…",
+                                    command=self._apply_suggestion)
+        self.apply_btn.pack(pady=(0, 8))
+        self._suggestion: dict | None = None
+        self._selected_doc_id: str | None = None
+        self.apply_btn.state(["disabled"])
+        self._sync_mode()
+        self.after(50, self._load)
+
+    def _sync_mode(self):
+        ask = self.mode_var.get() == "ask"
+        state = "!disabled" if ask else "disabled"
+        self.question_entry.state([state])
+
+    def _selected_doc(self):
+        parent = self.master
+        return parent._selected_doc() if hasattr(parent, "_selected_doc") else None
+
+    def _load(self):
+        doc = self._selected_doc()
+        if doc:
+            self._selected_doc_id = doc["id"]
+            self.doc_label.config(text=doc["filename"])
+        token = self.session.access_token
+
+        def work():
+            return self.client.ai_status(token)
+
+        def ok(data):
+            if data.get("configured"):
+                self.status_var.set(
+                    f'Cloud AI ready - model {data.get("model", "unknown")}'
+                )
+            else:
+                self.status_var.set("Cloud AI is not configured on this server yet.")
+
+        def err(exc):
+            self.status_var.set(describe_api_error(exc))
+
+        self.runner.submit(work, on_success=ok, on_error=err)
+
+    def _show_result(self, text: str, sources: list[dict]):
+        self.result_text.config(state="normal")
+        self.result_text.delete("1.0", "end")
+        self.result_text.insert("1.0", text)
+        self.result_text.config(state="disabled")
+        names = ", ".join(s["filename"] for s in sources) if sources else "none"
+        self.sources_label.config(text=f"Sources: {names}")
+
+    def _send(self):
+        if self.runner.busy:
+            return
+        mode = self.mode_var.get()
+        token = self.session.access_token
+        doc = self._selected_doc()
+        question = self.question_var.get().strip()
+        if mode == "ask" and not question:
+            self._show_result("Type a question first.", [])
+            return
+        if mode in ("summarize", "suggest") and doc is None:
+            self._show_result("Select a document first.", [])
+            return
+        self._suggestion = None
+        self.apply_btn.state(["disabled"])
+
+        def work():
+            if mode == "ask":
+                return self.client.ai_ask(token, question)
+            if mode == "summarize":
+                return self.client.ai_summarize(token, doc["id"])
+            return self.client.ai_suggest_filename(token, doc["id"])
+
+        def ok(data):
+            if mode == "ask":
+                self._show_result(data.get("answer", ""), data.get("sources", []))
+            elif mode == "summarize":
+                self._show_result(data.get("summary", ""), data.get("sources", []))
+            else:
+                self._suggestion = {"doc_id": doc["id"], "data": data}
+                self.apply_btn.state(["!disabled"])
+                self._show_result(
+                    f'Suggested: {data.get("suggested_filename", "")}\n'
+                    f'Current:  {data.get("current_filename", "")}\n\n'
+                    f'{data.get("reason", "")}',
+                    [],
+                )
+
+        def err(exc):
+            self._show_result(describe_api_error(exc), [])
+
+        self.runner.submit(work, on_success=ok, on_error=err)
+
+    def _apply_suggestion(self):
+        """Proposal only: confirm, then reuse the existing validated rename."""
+        if not self._suggestion:
+            return
+        doc_id = self._suggestion["doc_id"]
+        new_name = self._suggestion["data"].get("suggested_filename", "")
+        if not messagebox.askyesno(
+            "Apply filename suggestion",
+            f'Rename this document to "{new_name}"?',
+            parent=self,
+        ):
+            return
+        token = self.session.access_token
+
+        def work():
+            return self.client.rename(token, doc_id, new_name)
+
+        def ok(_):
+            self._show_result(f'Renamed to "{new_name}".', [])
+            self._suggestion = None
+            self.apply_btn.state(["disabled"])
+            if self.on_renamed:
+                self.on_renamed()
+
+        def err(exc):
+            self._show_result(describe_api_error(exc), [])
+
+        self.runner.submit(work, on_success=ok, on_error=err)

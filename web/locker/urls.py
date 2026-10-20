@@ -25,4 +25,5 @@ urlpatterns = [
         views.delete_confirm,
         name="delete",
     ),
+    path("ai/", views.ai, name="ai"),
 ]

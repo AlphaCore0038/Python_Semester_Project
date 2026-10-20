@@ -20,7 +20,7 @@ Django Web App (web/)          Tkinter Desktop App (desktop/)
         ┌────────────┴────────────┐
         ▼                         ▼
      Supabase                 OpenRouter
-  PostgreSQL + Storage       Cloud AI (MiMo-V2.6-Flash)
+  PostgreSQL + Storage       Cloud AI (MiniMax M3.1 Flash)
   (metadata + files)
 
   Local AI: UI placeholder only — no inference backend in this version.
@@ -70,8 +70,8 @@ or Tkinter clients and are never committed to Git.
 | 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
 | 6 | Django web client | **Complete** |
-| 7 | Tkinter desktop client | **Complete** (AI assistant lands with the AI phase) |
-| 8 | AI assistant (OpenRouter) | Not started |
+| 7 | Tkinter desktop client | **Complete** |
+| 8 | AI assistant (OpenRouter) | **Complete** |
 | 9 | Admin access + Google Sheets registry (deferred) | Not started |
 | 10 | Demo polish | Not started |
 
@@ -257,6 +257,59 @@ place only when complete.
 while one runs); the 50 MiB/500 MB messages rely on the backend's exact
 413 wording (pinned by backend tests); logout does not revoke the
 server-side JWT (it simply expires after 24 h).
+
+## AI assistant — Cloud AI via OpenRouter (Phase 8)
+
+The assistant is optional: the locker is fully usable without it (spec §17).
+It runs entirely inside the FastAPI backend, which is the only component
+holding the OpenRouter key. Clients pass a Bearer JWT; every AI endpoint
+resolves the user from the verified token and touches documents only via
+the same user-scoped database/storage paths the rest of the API uses.
+
+**Model:** `minimax/minimax-m3.1-flash:free` (MiniMax M3.1 Flash, via
+OpenRouter's free route). There is **no fallback model**: if the free route
+is busy, unavailable, or the key is missing, AI endpoints return a clear,
+safe 503 and the rest of the app keeps working. Override with
+`OPENROUTER_MODEL` in `backend/.env`; reasoning effort with
+`OPENROUTER_REASONING_EFFORT` (default `low` to keep chat latency sane).
+
+**What works:**
+
+- `GET /ai/status` — configured flag + model name (authenticated).
+- `POST /ai/ask` — question answered from the user's own documents.
+  Keyword-window retrieval (filename overlap weighted above content
+  overlap, top 3 excerpts, hard character budget) picks candidates; if
+  nothing looks relevant the model is **never called** and the API returns
+  a fixed honest "couldn't find any documents" message with
+  `relevant_documents_found: false`. When excerpts do not contain the
+  answer, the fixed system prompt forces the model to say so instead of
+  guessing. Document text is wrapped in `<document>` tags and treated as
+  untrusted data (prompt-injection defense: the system prompt is fixed
+  and the model has no tools or side effects).
+- `POST /ai/summarize` — short summary of one owned document.
+- `POST /ai/suggest-filename` — **proposal only.** The suggestion is
+  validated server-side with the same filename rules as rename; applying
+  it goes through the existing confirmed rename path (web: the rename
+  page, desktop: an explicit yes/no prompt then `PATCH /documents/{id}`).
+  The AI endpoints themselves never write anything.
+
+**Text extraction (honest scope):** TXT, PDF (via `pypdf`), and DOCX only.
+XLSX and images return a clear "not supported yet" message; scanned PDFs
+with no text layer, password-protected files, and corrupt files each get
+their own honest error. No OCR, no speculative success.
+
+**UI:** Django — floating AI button (bottom-right, logged-in users only)
+opens the `/ai/` page (ask / summarize / suggest). Tkinter — "AI Assistant"
+button opens a compact dialog with the same three modes; "Local AI" is a
+disabled radio button labeled unavailable, never a selectable working mode
+(spec §12).
+
+**Known limitations:** non-streaming (one reply per request; answers arrive
+whole or not at all — streaming is a possible later upgrade); single-model,
+no fallback; retrieval is keyword-based, not semantic (no embeddings/vector
+store in this phase); PDF extraction covers text-based PDFs only; each ask
+re-reads and re-extracts candidate documents (no caching); the free
+OpenRouter route's availability is not guaranteed.
 
 ## License / scope
 

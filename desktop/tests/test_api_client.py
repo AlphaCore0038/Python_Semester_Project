@@ -168,3 +168,85 @@ def test_describe_never_leaks_internals():
         "Something went wrong. Please try again."
     )
     assert "secret" not in describe_api_error(ApiError(500, "internal detail"))
+
+
+# --- AI assistant endpoints -------------------------------------------
+
+
+def test_ai_status_ask_summarize_suggest_paths_and_bearer():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, str(request.url), request.headers.get("authorization"),
+                     request.content))
+        path = request.url.path
+        if path.endswith("/ai/status"):
+            return httpx.Response(200, json={
+                "configured": True, "provider": "openrouter",
+                "model": "minimax/minimax-m3.1-flash:free", "local_ai": "unavailable",
+            })
+        if path.endswith("/ai/ask"):
+            return httpx.Response(200, json={
+                "answer": "12345", "sources": [], "model": "m", "relevant_documents_found": True,
+            })
+        if path.endswith("/ai/summarize"):
+            return httpx.Response(200, json={
+                "summary": "brief", "sources": [], "model": "m",
+            })
+        return httpx.Response(200, json={
+            "current_filename": "a.txt", "suggested_filename": "b.txt",
+            "reason": "proposal", "model": "m",
+        })
+
+    client = make_client(handler)
+    status = client.ai_status(TOKEN)
+    assert status["configured"] is True
+    ask = client.ai_ask(TOKEN, "What is 12345?")
+    assert ask["answer"] == "12345"
+    client.ai_summarize(TOKEN, "d1")
+    suggest = client.ai_suggest_filename(TOKEN, "d1")
+    assert suggest["suggested_filename"] == "b.txt"
+
+    paths = [url for (_m, url, _h, _b) in seen]
+    assert any(p.endswith("/ai/status") for p in paths)
+    assert any(p.endswith("/ai/ask") for p in paths)
+    assert any(p.endswith("/ai/summarize") for p in paths)
+    assert any(p.endswith("/ai/suggest-filename") for p in paths)
+    # Bearer only in header, never URL; JWT never logged.
+    for (_m, url, auth, body) in seen:
+        assert TOKEN not in url
+        assert auth == f"Bearer {TOKEN}"
+        if body:
+            assert TOKEN.encode() not in body
+
+
+def test_ai_provider_503_maps_to_safe_message():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={
+            "detail": "The AI provider is busy. Please try again shortly.",
+        })
+
+    with pytest.raises(ApiError) as excinfo:
+        make_client(handler).ai_ask(TOKEN, "hi")
+    assert excinfo.value.status_code == 503
+    assert "busy" in describe_api_error(excinfo.value)
+
+
+def test_ai_unsupported_format_422_detail_passes_through():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={
+            "detail": "Text extraction is not supported for this format yet.",
+        })
+
+    with pytest.raises(ApiError) as excinfo:
+        make_client(handler).ai_summarize(TOKEN, "d1")
+    assert "not supported" in describe_api_error(excinfo.value)
+
+
+def test_ai_unconfigured_provider_503():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"detail": "AI is not configured on this server."})
+
+    with pytest.raises(ApiError) as excinfo:
+        make_client(handler).ai_status(TOKEN)
+    assert "not configured" in describe_api_error(excinfo.value).lower()

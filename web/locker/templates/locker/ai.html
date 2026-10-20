@@ -1,0 +1,90 @@
+{% extends "locker/base.html" %}
+{% block title %}AI Assistant - AI Digital Locker{% endblock %}
+{% block content %}
+<h1>AI Assistant</h1>
+
+<div class="card">
+  {% if ai_status.configured %}
+    <p><strong>Cloud AI</strong> ({{ ai_status.provider }}) &mdash; model <code>{{ ai_status.model }}</code></p>
+  {% else %}
+    <p class="msg warning">Cloud AI is not configured on this server yet. Features here will stay disabled until it is.</p>
+  {% endif %}
+  <p class="muted">Local AI: unavailable (planned for a later phase).</p>
+</div>
+
+<div class="card">
+  <h2>Ask a question</h2>
+  <form method="post" action="{% url 'locker:ai' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="ask">
+    <label for="question">Question</label>
+    <input type="text" id="question" name="question" maxlength="1000"
+           value="{{ request.POST.question }}"
+           placeholder="e.g. What was my internship stipend?">
+    <button type="submit" {% if not ai_status.configured %}disabled{% endif %}>Ask</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Summarize a document</h2>
+  <form method="post" action="{% url 'locker:ai' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="summarize">
+    <label for="summarize_doc">Document</label>
+    <select id="summarize_doc" name="document_id" required>
+      {% for doc in documents %}
+        <option value="{{ doc.id }}">{{ doc.filename }}</option>
+      {% empty %}
+        <option disabled>No documents yet</option>
+      {% endfor %}
+    </select>
+    <button type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>Summarize</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Suggest a better filename</h2>
+  <form method="post" action="{% url 'locker:ai' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="suggest">
+    <label for="suggest_doc">Document</label>
+    <select id="suggest_doc" name="document_id" required>
+      {% for doc in documents %}
+        <option value="{{ doc.id }}">{{ doc.filename }}</option>
+      {% empty %}
+        <option disabled>No documents yet</option>
+      {% endfor %}
+    </select>
+    <button type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>Suggest name</button>
+  </form>
+  <p class="muted">Suggestions are proposals only. You still confirm any rename on the usual rename page.</p>
+</div>
+
+{% if result %}
+  <div class="card">
+    <h2>Result</h2>
+    {% if result.kind == "ask" %}
+      <p><strong>Question:</strong> {{ request.POST.question }}</p>
+      <p>{{ result.data.answer }}</p>
+      {% if result.data.sources %}
+        <p class="muted">Based on:
+          {% for source in result.data.sources %}{{ source.filename }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+      {% else %}
+        <p class="muted">No matching documents were used for this answer.</p>
+      {% endif %}
+    {% elif result.kind == "summarize" %}
+      <p><strong>Summary of {{ result.data.sources.0.filename }}:</strong></p>
+      <p>{{ result.data.summary }}</p>
+    {% elif result.kind == "suggest" %}
+      <p><strong>Current name:</strong> {{ result.data.current_filename }}</p>
+      <p><strong>Suggested name:</strong> {{ result.data.suggested_filename }}</p>
+      <p class="muted">{{ result.data.reason }}</p>
+      <a class="btn"
+         href="{% url 'locker:rename' result.document_id %}?filename={{ result.data.suggested_filename|urlencode }}">
+        Apply suggestion (you'll confirm)
+      </a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -50,6 +50,8 @@ def describe_api_error(exc: BaseException) -> str:
             return "That file is empty."
         if status == 422:
             return detail or "Invalid input."
+        if status == 503 and detail:
+            return detail
     return "Something went wrong. Please try again."
 
 
@@ -171,3 +173,23 @@ class ApiClient:
 
     def delete(self, token: str, document_id: str) -> None:
         self._handle("DELETE", f"/documents/{document_id}", token=token)
+
+    # --- AI assistant ----------------------------------------------------
+
+    def ai_status(self, token: str) -> dict:
+        return self._handle("GET", "/ai/status", token=token).json()
+
+    def ai_ask(self, token: str, question: str) -> dict:
+        return self._handle(
+            "POST", "/ai/ask", token=token, json={"question": question}
+        ).json()
+
+    def ai_summarize(self, token: str, document_id: str) -> dict:
+        return self._handle(
+            "POST", "/ai/summarize", token=token, json={"document_id": document_id}
+        ).json()
+
+    def ai_suggest_filename(self, token: str, document_id: str) -> dict:
+        return self._handle(
+            "POST", "/ai/suggest-filename", token=token, json={"document_id": document_id}
+        ).json()
