@@ -70,7 +70,7 @@ or Tkinter clients and are never committed to Git.
 | 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
 | 6 | Django web client | **Complete** |
-| 7 | Tkinter desktop client | Not started |
+| 7 | Tkinter desktop client | **Complete** (AI assistant lands with the AI phase) |
 | 8 | AI assistant (OpenRouter) | Not started |
 | 9 | Admin access + Google Sheets registry (deferred) | Not started |
 | 10 | Demo polish | Not started |
@@ -106,8 +106,8 @@ uvicorn app.main:app --reload
 py -m pytest
 ```
 
-The web client (`web/`) has its own venv (see Phase 6 below). The desktop
-client gets one when it is built (later phase).
+The web (`web/`) and desktop (`desktop/`) clients each have their own
+venv (see the Phase 6 and Phase 7 sections below).
 
 ## Authentication (Phase 4)
 
@@ -208,6 +208,55 @@ environment (the process refuses to start without it).
 Honest limitations: Django does not proxy the backend's 413 `detail` strings
 into structured codes (it matches the two known messages exactly); list
 results are rendered unpaginated (fine at the 500 MB personal scale).
+
+## Desktop client — Tkinter (Phase 7)
+
+Windows Tkinter app that talks only to the FastAPI backend (never to
+Supabase). Requires the same Python 3.14 + `py` launcher setup; the only
+third-party dependency is `httpx`.
+
+```bat
+:: 1. Virtual environment + dependencies
+cd desktop
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+:: 2. Configuration (optional): set a non-default backend URL
+set FASTAPI_BASE_URL=http://127.0.0.1:8000
+:: Otherwise the repo-root .env is read, then localhost is assumed.
+
+:: 3. Tests (all HTTP mocked; no credentials needed)
+py -m pytest
+
+:: 4. Run with the FastAPI backend already running
+py locker.py
+```
+
+What works: register (auto-login), login, logout, persisted login across
+restarts, dashboard with usage bar and document list, upload (with the
+spec's "Keep Offline Copy" checkbox), download, save-offline for existing
+documents, rename, delete-with-confirmation, search/sort/MIME filter using
+the real API parameters, and expired-session handling (401 returns to the
+login screen).
+
+**Sessions:** the JWT is stored in plaintext at
+`%APPDATA%\AiDigitalLocker\session.json` (per-user folder, atomic writes).
+It is never printed, logged, shown in the UI, or placed in a URL. Logout
+clears it. Same-Windows-user access to that file is a documented
+limitation; OS-level encryption (DPAPI) is possible future hardening.
+
+**Offline copies (spec §11):** optional per-device copies live under
+`desktop/offline/<document_id>/<filename>` (gitignored). They never
+synchronize across devices or with later cloud changes; they are not
+deleted on logout; cloud renames/deletes do not touch them; they are
+plain local files. Downloads stream to a temp file and are moved into
+place only when complete.
+
+**Known limitations:** one network operation at a time (buttons disable
+while one runs); the 50 MiB/500 MB messages rely on the backend's exact
+413 wording (pinned by backend tests); logout does not revoke the
+server-side JWT (it simply expires after 24 h).
 
 ## License / scope
 

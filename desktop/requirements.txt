@@ -4,3 +4,6 @@
 # The desktop client talks to the FastAPI backend over HTTP only.
 
 httpx>=0.28.0
+
+# Test-only
+pytest>=8.0.0
