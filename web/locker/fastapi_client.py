@@ -11,6 +11,9 @@ from django.conf import settings
 # Requests timeout: (connect, read) seconds. Kept short so a dead backend
 # surfaces as a friendly message instead of a hung page.
 TIMEOUT = (5, 15)
+# AI calls wait on the model; must not time out before the backend's own
+# OpenRouter read timeout (90 s).
+AI_TIMEOUT = (5, 90)
 
 
 class FastAPIError(Exception):
@@ -45,7 +48,8 @@ def _detail(resp):
     return ""
 
 
-def _call(method, path, *, token=None, json=None, files=None, params=None, stream=False):
+def _call(method, path, *, token=None, json=None, files=None, params=None,
+          stream=False, timeout=None):
     try:
         resp = requests.request(
             method,
@@ -55,7 +59,7 @@ def _call(method, path, *, token=None, json=None, files=None, params=None, strea
             files=files,
             params=params,
             stream=stream,
-            timeout=TIMEOUT,
+            timeout=timeout or TIMEOUT,
         )
     except requests.RequestException:
         raise FastAPIError(0, "backend unreachable") from None
@@ -116,20 +120,25 @@ def delete(token, document_id):
 
 
 def ai_status(token):
-    return _call("GET", "/ai/status", token=token).json()
+    return _call("GET", "/ai/status", token=token, timeout=AI_TIMEOUT).json()
 
 
 def ai_ask(token, question):
-    return _call("POST", "/ai/ask", token=token, json={"question": question}).json()
+    return _call(
+        "POST", "/ai/ask", token=token, json={"question": question},
+        timeout=AI_TIMEOUT,
+    ).json()
 
 
 def ai_summarize(token, document_id):
     return _call(
-        "POST", "/ai/summarize", token=token, json={"document_id": document_id}
+        "POST", "/ai/summarize", token=token, json={"document_id": document_id},
+        timeout=AI_TIMEOUT,
     ).json()
 
 
 def ai_suggest_filename(token, document_id):
     return _call(
-        "POST", "/ai/suggest-filename", token=token, json={"document_id": document_id}
+        "POST", "/ai/suggest-filename", token=token,
+        json={"document_id": document_id}, timeout=AI_TIMEOUT,
     ).json()

@@ -550,9 +550,9 @@ class MainView(tk.Frame):
 
     def _open_ai(self):
         if self.runner.busy:
-            return
-        AIDialog(self, self.client, self.store, self.runner, self.session,
-                 on_renamed=self.after_idle(self.refresh))
+            return None
+        return AIDialog(self, self.client, self.store, self.runner, self.session,
+                        on_renamed=lambda: self.after_idle(self.refresh))
 
 
 class AIDialog(tk.Toplevel):

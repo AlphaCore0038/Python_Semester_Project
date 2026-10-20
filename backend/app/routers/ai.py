@@ -9,6 +9,7 @@ PATCH /documents/{id} rename path with its own validation.
 from __future__ import annotations
 
 import re
+from html import escape as html_escape
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -85,6 +86,18 @@ def _source(row: dict) -> DocumentSource:
     return DocumentSource(document_id=row["id"], filename=row["filename"])
 
 
+def _document_tag(filename: str, body: str) -> str:
+    """Wrap untrusted document text for the prompt.
+
+    The filename is escaped so a legal name containing quotes or
+    markup-like text cannot break out of the attribute. This only keeps
+    the wrapper structure intact - it is NOT a complete prompt-injection
+    defense; the system prompt still treats all document-tag content as
+    untrusted data.
+    """
+    return f'<document filename="{html_escape(filename, quote=True)}">\n{body}\n</document>'
+
+
 @router.get("/status", response_model=AIStatusResponse)
 def ai_status(current_user=Depends(get_current_user)) -> AIStatusResponse:
     settings = get_settings()
@@ -116,12 +129,12 @@ def _retrieve(
 
     # Filename overlap first (handles content/filename mismatch by weighting
     # the name the user actually sees), then up to 8 recent candidates.
+    # list_documents already returns full user-scoped rows (same columns as
+    # get_document), so candidates are used directly - no per-candidate
+    # re-fetch.
     named = sorted(docs, key=lambda d: -len(question_tokens & _tokens(d["filename"])))
     best: list[tuple[int, dict, str]] = []
-    for doc in named[:8]:
-        row = db.get_document(doc["id"], user_id)
-        if row is None:
-            continue
+    for row in named[:8]:
         try:
             data = storage.download_object(row["storage_path"])
         except Exception:  # noqa: BLE001 - skip unreadable files
@@ -143,8 +156,7 @@ def _retrieve(
     sources: list[DocumentSource] = []
     total = 0
     for _score, row, text in best[:3]:
-        excerpt = text[: settings.ai_context_doc_chars]
-        block = f'<document filename="{row["filename"]}">\n{excerpt}\n</document>'
+        block = _document_tag(row["filename"], text[: settings.ai_context_doc_chars])
         if total + len(block) > settings.ai_context_total_chars:
             remaining = settings.ai_context_total_chars - total
             if remaining <= 200:
@@ -192,9 +204,7 @@ def ai_summarize(
     row, text = _extract_owned_document(current_user["id"], body.document_id)
     prompt = (
         "Summarize this document concisely (under 150 words).\n\n"
-        f'<document filename="{row["filename"]}">\n'
-        f"{text[: settings.ai_summary_chars]}\n"
-        "</document>"
+        + _document_tag(row["filename"], text[: settings.ai_summary_chars])
     )
     try:
         summary = ai_client.chat(SYSTEM_PROMPT, prompt)
@@ -216,9 +226,7 @@ def ai_suggest_filename(
         "Suggest one better filename for this document. Rules: 1-255 characters, "
         "no path separators, no quotes, keep a sensible extension like the "
         "original. Reply with ONLY the filename, nothing else.\n\n"
-        f'<document filename="{current}">\n'
-        f"{text[: settings.ai_suggest_chars]}\n"
-        "</document>"
+        + _document_tag(current, text[: settings.ai_suggest_chars])
     )
     try:
         raw = ai_client.chat(SYSTEM_PROMPT, prompt)

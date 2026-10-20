@@ -36,12 +36,10 @@ def _finalize(text: str) -> ExtractionResult:
 def _from_text(data: bytes) -> ExtractionResult:
     # utf-8-sig handles BOM; latin-1 never fails and is the honest last resort
     # (a utf-16 attempt without BOM silently "succeeds" on random bytes).
-    for encoding in ("utf-8-sig", "latin-1"):
-        try:
-            return _finalize(data.decode(encoding))
-        except UnicodeDecodeError:
-            continue
-    return ExtractionResult("", "The document could not be decoded as text.")
+    try:
+        return _finalize(data.decode("utf-8-sig"))
+    except UnicodeDecodeError:
+        return _finalize(data.decode("latin-1"))
 
 
 def _from_pdf(data: bytes) -> ExtractionResult:

@@ -70,3 +70,66 @@ def test_ai_dialog_constructs_with_local_placeholder(root, runner, tmp_path):
     assert dialog.mode_var.get() == "ask"
     dialog.destroy()
     main.destroy()
+
+
+def test_ai_suggestion_apply_confirm_cancel_and_refresh(root, runner, tmp_path, monkeypatch):
+    """Regression: on_renamed must be a callable (was a Tk after-id string),
+    confirming must go through client.rename, cancelling must not."""
+    from app import views as views_module
+
+    session = Session("token", "ana@example.com", time.time() + 3600)
+    main = MainView(root, ApiClient("http://127.0.0.1:9"),
+                    SessionStore(tmp_path / "s.json"), runner, session,
+                    on_logged_out=lambda m=None: None)
+    root.update()
+
+    dialog = main._open_ai()
+    assert dialog is not None
+    assert callable(dialog.on_renamed)  # the exact Phase 8 bug: was "after#N"
+
+    class SyncRunner:
+        busy = False
+
+        def submit(self, fn, on_success=None, on_error=None, on_done=None):
+            try:
+                result = fn()
+            except Exception as exc:  # noqa: BLE001
+                if on_error:
+                    on_error(exc)
+            else:
+                if on_success:
+                    on_success(result)
+            if on_done:
+                on_done()
+            return True
+
+    rename_calls = []
+
+    class FakeClient:
+        def rename(self, token, document_id, filename):
+            rename_calls.append((token, document_id, filename))
+            return {"id": document_id, "filename": filename}
+
+    refreshed = []
+    monkeypatch.setattr(main, "refresh", lambda: refreshed.append(True))
+    dialog.client = FakeClient()
+    dialog.runner = SyncRunner()
+
+    # Confirm path: rename invoked; success callback schedules refresh (no TypeError).
+    monkeypatch.setattr(views_module.messagebox, "askyesno", lambda *a, **k: True)
+    dialog._suggestion = {"doc_id": "d1", "data": {"suggested_filename": "better.txt"}}
+    dialog._apply_suggestion()  # ok() calls on_renamed() synchronously via SyncRunner
+    assert rename_calls == [("token", "d1", "better.txt")]
+    assert dialog._suggestion is None
+    root.update()  # flush the after_idle-scheduled main.refresh
+    assert refreshed == [True]
+
+    # Cancel path: nothing renamed, suggestion kept for another try.
+    monkeypatch.setattr(views_module.messagebox, "askyesno", lambda *a, **k: False)
+    dialog._suggestion = {"doc_id": "d1", "data": {"suggested_filename": "other.txt"}}
+    dialog._apply_suggestion()
+    assert rename_calls == [("token", "d1", "better.txt")]  # unchanged
+    assert dialog._suggestion is not None
+
+    dialog.destroy()
+    main.destroy()

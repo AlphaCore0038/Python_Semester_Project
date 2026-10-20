@@ -561,3 +561,16 @@ class AITests(MockedAPITestCase):
         self.client.post(reverse("locker:logout"))
         logged_out = self.client.get(reverse("locker:login"))
         self.assertNotContains(logged_out, 'class="floating-ai"')
+
+    def test_ai_calls_use_long_timeout_regular_calls_keep_short(self):
+        self._seed_ai()
+        self.route("POST", "/ai/ask", json_data=ASK_RESULT)
+        self.client.post(reverse("locker:ai"), {"action": "ask", "question": "hi"})
+        ai_timeouts = [kw["timeout"] for (_m, url, kw) in self.calls if "/ai/" in url]
+        regular_timeouts = [
+            kw["timeout"] for (_m, url, kw) in self.calls if "/ai/" not in url
+        ]
+        assert ai_timeouts and all(t == fastapi_client.AI_TIMEOUT for t in ai_timeouts)
+        assert fastapi_client.AI_TIMEOUT == (5, 90)
+        assert regular_timeouts and all(t == fastapi_client.TIMEOUT for t in regular_timeouts)
+        assert fastapi_client.TIMEOUT == (5, 15)

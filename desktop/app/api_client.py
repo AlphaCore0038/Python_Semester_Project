@@ -20,6 +20,10 @@ DETAIL_QUOTA = "Storage quota exceeded"
 
 DOWNLOAD_CHUNK = 64 * 1024
 
+# AI calls wait on the model; must not time out before the backend's own
+# OpenRouter read timeout (90 s). Ordinary operations keep the client default.
+AI_TIMEOUT = (5.0, 90.0)
+
 
 class ApiError(Exception):
     """Normalized backend/network error. status_code 0 == unreachable."""
@@ -177,19 +181,24 @@ class ApiClient:
     # --- AI assistant ----------------------------------------------------
 
     def ai_status(self, token: str) -> dict:
-        return self._handle("GET", "/ai/status", token=token).json()
+        return self._handle(
+            "GET", "/ai/status", token=token, timeout=AI_TIMEOUT
+        ).json()
 
     def ai_ask(self, token: str, question: str) -> dict:
         return self._handle(
-            "POST", "/ai/ask", token=token, json={"question": question}
+            "POST", "/ai/ask", token=token, json={"question": question},
+            timeout=AI_TIMEOUT,
         ).json()
 
     def ai_summarize(self, token: str, document_id: str) -> dict:
         return self._handle(
-            "POST", "/ai/summarize", token=token, json={"document_id": document_id}
+            "POST", "/ai/summarize", token=token, json={"document_id": document_id},
+            timeout=AI_TIMEOUT,
         ).json()
 
     def ai_suggest_filename(self, token: str, document_id: str) -> dict:
         return self._handle(
-            "POST", "/ai/suggest-filename", token=token, json={"document_id": document_id}
+            "POST", "/ai/suggest-filename", token=token,
+            json={"document_id": document_id}, timeout=AI_TIMEOUT,
         ).json()

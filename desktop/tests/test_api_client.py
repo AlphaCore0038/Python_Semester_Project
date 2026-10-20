@@ -250,3 +250,28 @@ def test_ai_unconfigured_provider_503():
     with pytest.raises(ApiError) as excinfo:
         make_client(handler).ai_status(TOKEN)
     assert "not configured" in describe_api_error(excinfo.value).lower()
+
+
+def test_ai_methods_use_long_timeout_and_pass_it_per_request():
+    from app.api_client import AI_TIMEOUT
+
+    assert AI_TIMEOUT == (5.0, 90.0)
+    seen_timeouts = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # httpx stores per-request timeout overrides in request extensions.
+        seen_timeouts.append(request.extensions.get("timeout"))
+        return httpx.Response(200, json={
+            "configured": True, "provider": "openrouter", "model": "m",
+            "local_ai": "unavailable",
+        })
+
+    client = make_client(handler)
+    client.ai_status(TOKEN)
+    timeout_ext = seen_timeouts[-1]
+    assert timeout_ext is not None
+    assert timeout_ext["connect"] == 5.0
+    assert timeout_ext["read"] == 90.0
+    # A non-AI call on the same client keeps the client default (60 s read).
+    client.me(TOKEN)
+    assert seen_timeouts[-1]["read"] == 60.0
