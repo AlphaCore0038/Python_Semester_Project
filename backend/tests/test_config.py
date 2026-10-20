@@ -18,8 +18,11 @@ def _clear_cached_settings() -> None:
 
 
 @pytest.fixture(autouse=True)
-def isolated_env(monkeypatch: pytest.MonkeyPatch):
-    # Ensure the real .env is never read during tests.
+def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    # Ensure the real .env is never read during tests: point the module's
+    # ENV_FILE at a nonexistent path so load_settings() falls back to
+    # process env only (OS vars are cleared below).
+    monkeypatch.setattr(config, "ENV_FILE", tmp_path / ".env")
     for name in (
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",

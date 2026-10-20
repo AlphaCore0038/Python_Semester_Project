@@ -16,8 +16,11 @@ BUCKET = "documents"
 
 
 def upload_object(path: str, data: bytes, content_type: str) -> None:
+    # storage3 2.33.0: upload(path, file, file_options) takes a FileOptions
+    # TypedDict (string values), not content_type=/upsert= kwargs.
+    # upsert="false" keeps POST non-overwriting (never clobber a key).
     get_supabase().storage.from_(BUCKET).upload(
-        path, data, content_type=content_type, upsert=False
+        path, data, {"content-type": content_type, "upsert": "false"}
     )
 
 
