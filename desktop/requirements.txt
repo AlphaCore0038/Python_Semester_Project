@@ -1,0 +1,6 @@
+# Tkinter desktop client — direct dependencies
+# Target: Python 3.14
+# Note: tkinter ships with the standard Python distribution and is not listed here.
+# The desktop client talks to the FastAPI backend over HTTP only.
+
+httpx>=0.28.0

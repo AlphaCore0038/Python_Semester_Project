@@ -1,0 +1,42 @@
+# Secrets — real env files are ignored at any level; templates stay trackable
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python caches and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Desktop client: local offline document copies (never commit user documents)
+desktop/offline/
+
+# Credential files (Google service accounts, etc.)
+credentials*.json
+service_account*.json
+service-account*.json
+
+# Build artifacts and generated files
+dist/
+build/
+*.egg
+.coverage
+htmlcov/
+
+# Django (web client) generated files
+db.sqlite3
+staticfiles/
+
+# OS noise
+Thumbs.db
+.DS_Store

@@ -1,0 +1,7 @@
+# Django web client — direct dependencies
+# Target: Python 3.14
+# Note: the web client talks to the FastAPI backend over HTTP;
+# it does not connect to Supabase directly.
+
+Django>=6.1.0
+requests>=2.32.0
