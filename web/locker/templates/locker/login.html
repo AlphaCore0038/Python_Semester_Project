@@ -1,0 +1,19 @@
+{% extends "locker/base.html" %}
+{% block title %}Login - AI Digital Locker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:0 auto">
+  <h2>Sign in</h2>
+  {% if form.non_field_errors %}<ul class="errlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label for="id_email">Email</label>
+    {{ form.email }}
+    {{ form.email.errors }}
+    <label for="id_password">Password</label>
+    {{ form.password }}
+    {{ form.password.errors }}
+    <p><button type="submit">Sign in</button></p>
+  </form>
+  <p class="muted">No account? <a href="{% url 'locker:register' %}">Register</a></p>
+</div>
+{% endblock %}

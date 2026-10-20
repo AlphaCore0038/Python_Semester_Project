@@ -69,7 +69,7 @@ or Tkinter clients and are never committed to Git.
 | 3 | FastAPI core + smoke test | **Complete** |
 | 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
-| 6 | Django web client | Not started |
+| 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | Not started |
 | 8 | AI assistant (OpenRouter) | Not started |
 | 9 | Admin access + Google Sheets registry (deferred) | Not started |
@@ -106,8 +106,8 @@ uvicorn app.main:app --reload
 py -m pytest
 ```
 
-The web (`web/`) and desktop (`desktop/`) clients get their own venvs when those
-clients are built (later phases).
+The web client (`web/`) has its own venv (see Phase 6 below). The desktop
+client gets one when it is built (later phase).
 
 ## Authentication (Phase 4)
 
@@ -162,6 +162,52 @@ and `public.documents` with RLS enabled; private Storage bucket `documents`.
 The Supabase Free plan caps each uploaded object at 50 MB
 (`MAX_UPLOAD_BYTES=52428800`); the application-level per-user quota remains
 500 MB (`STORAGE_QUOTA_BYTES=524288000`).
+
+## Web client — Django (Phase 6)
+
+Django provides the UI and session management; FastAPI remains the sole API and
+authorization boundary. Django calls FastAPI over HTTP only — it never touches
+Supabase and never holds service-role or JWT-signing credentials.
+
+```bat
+:: 1. Virtual environment + dependencies (Windows, Python 3.14)
+cd web
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+:: 2. Configuration (never commit the real .env)
+copy .env.example .env
+notepad .env
+:: Set DJANGO_SECRET_KEY (required):
+::   py -c "import secrets; print(secrets.token_urlsafe(64))"
+:: FASTAPI_BASE_URL is inherited from the repo-root .env if present.
+
+:: 3. Tests (all FastAPI calls are mocked; backend must NOT be running for clarity)
+py manage.py test
+
+:: 4. Run (with the FastAPI backend already running on :8000)
+py manage.py runserver
+:: Open http://127.0.0.1:8000/  ->  register, upload, search, sort, download
+```
+
+What works: registration with automatic login, login, POST-only logout,
+authenticated dashboard with a 500 MB usage bar, upload (50 MiB UI hint,
+FastAPI authoritative), filename search, sort/order, MIME-type filter,
+streaming download proxy, rename, and delete behind a confirmation page.
+Expired sessions (401) flush Django state and redirect to login; API/network
+failures show safe generic messages.
+
+Security posture: the FastAPI JWT lives only in Django's server-side session
+store (database-backed cookie holds an opaque session key — HttpOnly,
+SameSite=Lax, Secure when `DEBUG=False`); it is never rendered into HTML,
+URLs, or JavaScript. Session keys rotate on every login, all state-changing
+forms carry CSRF tokens, and `DJANGO_SECRET_KEY` is required from the
+environment (the process refuses to start without it).
+
+Honest limitations: Django does not proxy the backend's 413 `detail` strings
+into structured codes (it matches the two known messages exactly); list
+results are rendered unpaginated (fine at the 500 MB personal scale).
 
 ## License / scope
 

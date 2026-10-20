@@ -1,0 +1,17 @@
+{% extends "locker/base.html" %}
+{% block title %}Rename - AI Digital Locker{% endblock %}
+{% block content %}
+<div class="card" style="max-width:460px">
+  <h2>Rename document</h2>
+  <form method="post">
+    {% csrf_token %}
+    <label for="id_filename">New filename</label>
+    {{ form.filename }}
+    {{ form.filename.errors }}
+    <p>
+      <button type="submit">Save</button>
+      <a class="btn secondary" href="{% url 'locker:dashboard' %}">Cancel</a>
+    </p>
+  </form>
+</div>
+{% endblock %}

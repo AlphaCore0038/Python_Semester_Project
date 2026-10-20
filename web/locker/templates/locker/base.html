@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI Digital Locker{% endblock %}</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1a1d21; }
+    header { background: #1f2733; color: #fff; padding: 0.7rem 1.2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    header .brand { font-weight: 700; text-decoration: none; color: #fff; }
+    header nav { display: flex; gap: 0.8rem; align-items: center; margin-left: auto; }
+    header a { color: #cfd6e0; text-decoration: none; }
+    header a:hover { color: #fff; }
+    main { max-width: 960px; margin: 1.4rem auto; padding: 0 1rem; }
+    .card { background: #fff; border: 1px solid #dfe3e8; border-radius: 8px; padding: 1.1rem; margin-bottom: 1.1rem; }
+    .msg { padding: 0.6rem 0.9rem; border-radius: 6px; margin-bottom: 0.9rem; }
+    .msg.success { background: #e3f5e8; border: 1px solid #a8dcb8; }
+    .msg.warning, .msg.info { background: #fdf3d7; border: 1px solid #eed9a0; }
+    .msg.error { background: #fbe6e6; border: 1px solid #eeb3b3; }
+    label { display: block; margin: 0.6rem 0 0.2rem; font-size: 0.92rem; }
+    input[type=text], input[type=email], input[type=password], select {
+      width: 100%; padding: 0.45rem 0.55rem; border: 1px solid #c3c9d1; border-radius: 5px; font-size: 0.95rem;
+    }
+    button, .btn {
+      display: inline-block; background: #2563eb; border: 0; color: #fff; padding: 0.5rem 0.9rem;
+      border-radius: 5px; font-size: 0.95rem; cursor: pointer; text-decoration: none;
+    }
+    button:hover, .btn:hover { background: #1d4fd8; }
+    button.secondary, .btn.secondary { background: #5b6472; }
+    button.danger, .btn.danger { background: #c0392b; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+    th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid #e6e9ed; }
+    th a { color: inherit; text-decoration: none; }
+    th a:hover { text-decoration: underline; }
+    .actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .actions form { margin: 0; }
+    .muted { color: #6b7280; font-size: 0.88rem; }
+    .usage-bar { background: #e6e9ed; border-radius: 6px; height: 12px; overflow: hidden; margin-top: 0.4rem; }
+    .usage-bar span { display: block; height: 100%; background: #2563eb; }
+    .usage-bar span.full { background: #c0392b; }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; }
+    .filters > div { flex: 1; min-width: 130px; }
+    .inline-form { display: inline; }
+    .errlist { color: #a4262c; margin: 0.4rem 0; }
+    .placeholder-ai { text-align: center; color: #9aa3af; font-size: 0.85rem; margin-top: 2rem; }
+    {# Floating AI button slot: reserved for the AI phase; intentionally empty now. #}
+    .floating-ai { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="{% url 'locker:dashboard' %}">AI Digital Locker</a>
+    <nav>
+      {% if request.session.api_token %}
+        <span class="muted" style="color:#cfd6e0">{{ request.session.api_email }}</span>
+        <form class="inline-form" method="post" action="{% url 'locker:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="secondary">Logout</button>
+        </form>
+      {% else %}
+        <a href="{% url 'locker:login' %}">Login</a>
+        <a href="{% url 'locker:register' %}">Register</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="msg {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+    {# Spec placeholder for the floating AI assistant (AI phase only). #}
+    <div class="floating-ai"></div>
+  </main>
+</body>
+</html>
