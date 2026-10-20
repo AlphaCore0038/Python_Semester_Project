@@ -68,7 +68,7 @@ or Tkinter clients and are never committed to Git.
 | 2 | Supabase schema + private storage bucket | **Complete** |
 | 3 | FastAPI core + smoke test | **Complete** |
 | 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
-| 5 | Documents API (upload, quota, search, download, rename, delete) | Not started |
+| 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
 | 6 | Django web client | Not started |
 | 7 | Tkinter desktop client | Not started |
 | 8 | AI assistant (OpenRouter) | Not started |
@@ -128,6 +128,34 @@ truncated); `is_admin` cannot be set through registration; login returns one
 generic error for wrong password or unknown email; the authenticated user id
 comes only from the verified JWT. Tests use an in-memory fake store — no real
 Supabase project or `.env` is needed for `py -m pytest`.
+
+## Documents API (Phase 5)
+
+All routes require `Authorization: Bearer <access_token>`; the user is always
+resolved from the verified JWT (never from request data).
+
+| Route | Purpose |
+|---|---|
+| `POST /documents` | Upload (multipart `file`); 413 over 50 MiB or over the 500 MB quota |
+| `GET /documents` | List with `search`, `sort` (`created_at`/`filename`/`file_size_bytes`), `order` (`asc`/`desc`), `file_type` |
+| `GET /documents/usage` | `{used_bytes, quota_bytes, document_count}` for the current user |
+| `GET /documents/{id}` | Download through FastAPI (private bucket, no public URLs) |
+| `PATCH /documents/{id}` | Rename (metadata only; Storage object never moves) |
+| `DELETE /documents/{id}` | Delete row, then best-effort Storage cleanup |
+
+```bat
+curl -X POST http://127.0.0.1:8000/documents -H "Authorization: Bearer %TOKEN%" -F "file=@sample.pdf"
+curl "http://127.0.0.1:8000/documents?search=intern&sort=filename&order=asc" -H "Authorization: Bearer %TOKEN%"
+curl -o sample.pdf http://127.0.0.1:8000/documents/<id> -H "Authorization: Bearer %TOKEN%"
+```
+
+Notes and honest limitations: filenames are validated strictly (1–255 chars,
+no path separators/control characters — rejected with 422, never rewritten);
+duplicate filenames are allowed; object keys are always
+`{user_id}/{document_id}`. The quota check reads current usage from the
+database, so two truly simultaneous uploads could race past the 500 MB limit
+(negligible for personal use). If Storage cleanup fails after a metadata
+delete, an orphaned object may remain (logged; excluded from quota).
 
 Supabase notes: project `ai-digital-locker` (ap-south-1); tables `public.users`
 and `public.documents` with RLS enabled; private Storage bucket `documents`.

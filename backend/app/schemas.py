@@ -1,4 +1,4 @@
-"""Shared Pydantic request/response schemas (Phase 4: auth)."""
+"""Shared Pydantic request/response schemas (Phase 4: auth, Phase 5: documents)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pydantic import BaseModel, field_validator
 from app.security import BCRYPT_MAX_BYTES
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_CONTENT_TYPE_RE = re.compile(r"^[\w.+-]+/[\w.+-]+$")
 
 
 def _normalize_email(value: str) -> str:
@@ -27,6 +28,26 @@ def _validate_password(value: str) -> str:
             f"Password must be at most {BCRYPT_MAX_BYTES} bytes when encoded as UTF-8"
         )
     return value
+
+
+def validate_filename(value: str) -> str:
+    """Strict filename validation: reject invalid names, never transform them."""
+    name = value.strip()
+    if not name or len(name) > 255:
+        raise ValueError("Filename must be 1-255 characters")
+    if name in {".", ".."}:
+        raise ValueError("Invalid filename")
+    if any(ord(char) < 32 for char in name):
+        raise ValueError("Filename must not contain control characters")
+    if "/" in name or "\\" in name:
+        raise ValueError("Filename must not contain path separators")
+    return name
+
+
+def sanitize_content_type(value: str | None) -> str:
+    if value and _CONTENT_TYPE_RE.match(value.strip()):
+        return value.strip()
+    return "application/octet-stream"
 
 
 class RegisterRequest(BaseModel):
@@ -61,3 +82,24 @@ class UserResponse(BaseModel):
 class RegisterResponse(BaseModel):
     id: str
     email: str
+
+
+class DocumentResponse(BaseModel):
+    id: str
+    filename: str
+    file_type: str
+    file_size_bytes: int
+    created_at: str
+    updated_at: str
+
+
+class RenameRequest(BaseModel):
+    filename: str
+
+    _validate_filename_field = field_validator("filename")(validate_filename)
+
+
+class UsageResponse(BaseModel):
+    used_bytes: int
+    quota_bytes: int
+    document_count: int

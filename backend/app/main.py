@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.config import load_settings
 from app.routers.auth import router as auth_router
+from app.routers.documents import router as documents_router
 
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Digital Locker API", lifespan=lifespan)
 app.include_router(auth_router, prefix="/auth")
+app.include_router(documents_router, prefix="/documents")
 
 
 @app.get("/health")

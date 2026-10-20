@@ -56,3 +56,91 @@ def get_user_by_id(user_id: str) -> dict | None:
         .execute()
     )
     return response.data[0] if response.data else None
+
+
+# --- documents (Phase 5) ---
+
+_DOCUMENT_COLUMNS = (
+    "id, user_id, filename, storage_path, file_type, file_size_bytes, created_at, updated_at"
+)
+
+# Allowlisted sort columns; never interpolate client input into query builders.
+DOCUMENT_SORT_COLUMNS = frozenset({"created_at", "filename", "file_size_bytes"})
+
+
+def create_document(row: dict) -> dict:
+    response = get_supabase().table("documents").insert(row).execute()
+    return response.data[0]
+
+
+def get_document(document_id: str, user_id: str) -> dict | None:
+    response = (
+        get_supabase()
+        .table("documents")
+        .select(_DOCUMENT_COLUMNS)
+        .eq("id", document_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def list_documents(
+    user_id: str,
+    *,
+    search: str | None = None,
+    sort: str = "created_at",
+    order: str = "desc",
+    file_type: str | None = None,
+) -> list[dict]:
+    query = (
+        get_supabase()
+        .table("documents")
+        .select(_DOCUMENT_COLUMNS)
+        .eq("user_id", user_id)
+    )
+    if search:
+        query = query.ilike("filename", f"%{search}%")
+    if file_type:
+        query = query.eq("file_type", file_type)
+    column = sort if sort in DOCUMENT_SORT_COLUMNS else "created_at"
+    query = query.order(column, desc=(order == "desc"))
+    return query.execute().data or []
+
+
+def update_filename(document_id: str, user_id: str, filename: str) -> dict | None:
+    response = (
+        get_supabase()
+        .table("documents")
+        .update({"filename": filename})
+        .eq("id", document_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def delete_document(document_id: str, user_id: str) -> bool:
+    response = (
+        get_supabase()
+        .table("documents")
+        .delete()
+        .eq("id", document_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    return bool(response.data)
+
+
+def sum_usage_and_count(user_id: str) -> tuple[int, int]:
+    """Trusted per-user usage from database metadata (never client-supplied)."""
+    response = (
+        get_supabase()
+        .table("documents")
+        .select("file_size_bytes")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    rows = response.data or []
+    return sum(int(row["file_size_bytes"]) for row in rows), len(rows)
