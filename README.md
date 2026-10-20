@@ -65,8 +65,8 @@ or Tkinter clients and are never committed to Git.
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Repository foundation (this) | **Complete** |
-| 2 | Supabase schema + private storage bucket | Not started |
-| 3 | FastAPI core + smoke test | Not started |
+| 2 | Supabase schema + private storage bucket | **Complete** |
+| 3 | FastAPI core + smoke test | **Complete** |
 | 4 | Authentication (register/login, JWT, admin bootstrap) | Not started |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | Not started |
 | 6 | Django web client | Not started |
@@ -75,20 +75,45 @@ or Tkinter clients and are never committed to Git.
 | 9 | Admin access + Google Sheets registry (deferred) | Not started |
 | 10 | Demo polish | Not started |
 
-No application code exists yet. Target Python version: **3.14** (Django 6.1 and current
-FastAPI both support it).
+Backend foundation exists (`backend/app/`); clients and feature APIs arrive in
+later phases. Target Python version: **3.14** (Django 6.1 and current FastAPI
+both support it; backend dependencies install and pass tests on 3.14).
 
-## Setup (once application phases begin)
+## Setup — backend (Windows, Python 3.14 via the `py` launcher)
+
+Prerequisites: Python 3.14 installed (the Windows `py` launcher must work).
 
 ```bat
-py -m venv backend\.venv
-backend\.venv\Scripts\activate
-pip install -r backend\requirements.txt
-copy backend\.env.example backend\.env
-:: fill in backend\.env with real values, then run uvicorn (Phase 3)
+:: 1. Virtual environment
+cd backend
+py -m venv .venv
+.venv\Scripts\activate
+
+:: 2. Dependencies
+pip install -r requirements.txt
+
+:: 3. Configuration (never commit the real .env)
+copy .env.example .env
+notepad .env
+:: Fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET (required),
+:: plus any optional values you need. Placeholder values are rejected at startup.
+
+:: 4. Run the API
+uvicorn app.main:app --reload
+:: Health check: http://127.0.0.1:8000/health  ->  {"status":"ok"}
+
+:: 5. Tests (no real .env or credentials required)
+py -m pytest
 ```
 
-Similar venvs are used for `web/` and `desktop/` when those clients are built.
+The web (`web/`) and desktop (`desktop/`) clients get their own venvs when those
+clients are built (later phases).
+
+Supabase notes: project `ai-digital-locker` (ap-south-1); tables `public.users`
+and `public.documents` with RLS enabled; private Storage bucket `documents`.
+The Supabase Free plan caps each uploaded object at 50 MB
+(`MAX_UPLOAD_BYTES=52428800`); the application-level per-user quota remains
+500 MB (`STORAGE_QUOTA_BYTES=524288000`).
 
 ## License / scope
 
