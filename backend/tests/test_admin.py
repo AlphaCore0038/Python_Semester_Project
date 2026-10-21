@@ -241,6 +241,8 @@ def test_admin_download_writes_audit_log(client: TestClient, world, caplog) -> N
     )
     assert str(admin["id"]) in message
     assert created["id"] in message
+    assert "timestamp_utc=" in message
+    assert message.rstrip().endswith("Z")
 
 
 def test_admin_download_storage_failure_is_a_controlled_500(
@@ -257,6 +259,26 @@ def test_admin_download_storage_failure_is_a_controlled_500(
     )
     assert response.status_code == 500
     assert response.json()["detail"] == "Failed to download document"
+
+
+def test_failed_admin_download_does_not_write_success_audit_log(
+    client: TestClient, world, caplog
+) -> None:
+    users, _docs, files = world
+    admin = make_admin(users)
+    student = make_user(users, "student@example.com")
+    created = upload(client, token_for(student), "report.txt").json()
+    files.fail_download = True
+
+    caplog.set_level(logging.INFO, logger="app.routers.admin")
+    response = client.get(
+        f"/admin/documents/{created['id']}", headers=token_for(admin)
+    )
+    assert response.status_code == 500
+    assert not any(
+        "admin document download" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 # --- regression: user routes stay owner-scoped ---

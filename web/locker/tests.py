@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from . import fastapi_client
+from . import fastapi_client, views
 from .views import DETAIL_QUOTA, DETAIL_TOO_LARGE
 
 JWT = "jwt-test-token-do-not-leak"
@@ -229,6 +229,20 @@ class DashboardTests(MockedAPITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "notes.pdf")
         self.assertContains(resp, "usage-bar")
+        self.assertContains(resp, "2026-10-20 10:00 UTC")
+
+    def test_dashboard_handles_missing_or_invalid_timestamps(self):
+        self._seed_session()
+        self.route("GET", "/documents/usage", json_data=USAGE)
+        self.route("GET", "/documents", json_data=[
+            {**DOC, "created_at": "not-a-timestamp"},
+            {**DOC, "id": "99999999-2222-3333-4444-555555555555",
+             "filename": "nodate.txt", "created_at": None},
+        ])
+        resp = self.client.get(reverse("locker:dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "nodate.txt")
+        self.assertContains(resp, "\u2014")
 
     def test_search_sort_filter_params_forwarded(self):
         self._seed_session()
@@ -633,8 +647,8 @@ class AdminTests(MockedAPITestCase):
         self.assertContains(resp, "ana@example.com")
         self.assertContains(resp, "notes.pdf")
         self.assertContains(resp, "application/pdf")
-        self.assertContains(resp, "2026-10-20T10:00:00Z")
-        self.assertContains(resp, "2026-10-01T09:00:00Z")
+        self.assertContains(resp, "2026-10-20 10:00 UTC")
+        self.assertContains(resp, "2026-10-01 09:00 UTC")
         self.assertContains(
             resp,
             reverse("locker:admin_download", kwargs={"document_id": DOC["id"]}),
@@ -736,3 +750,21 @@ class AdminTests(MockedAPITestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.url, reverse("locker:admin_dashboard"))
         self.assertFalse(self.client.session["api_is_admin"])
+
+
+class TimestampDisplayTests(TestCase):
+    def test_valid_iso_timestamp_is_formatted_in_utc(self):
+        self.assertEqual(
+            views._format_utc("2026-10-20T10:00:00Z"),
+            "2026-10-20 10:00 UTC",
+        )
+
+    def test_offset_timestamp_is_converted_to_utc(self):
+        self.assertEqual(
+            views._format_utc("2026-10-20T15:30:00+05:30"),
+            "2026-10-20 10:00 UTC",
+        )
+
+    def test_missing_or_invalid_timestamps_are_safe(self):
+        for value in (None, "", "not-a-date", "2026-99-99T99:99:99Z", 123):
+            self.assertEqual(views._format_utc(value), "\u2014")

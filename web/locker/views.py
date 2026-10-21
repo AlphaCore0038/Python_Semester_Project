@@ -5,6 +5,8 @@ All application operations are proxied to FastAPI via
 server-side session; it never renders the token into HTML, URLs, or
 JavaScript, and it never contacts Supabase directly.
 """
+from datetime import datetime, timezone
+
 from django.conf import settings
 from django.contrib import messages
 from django.http import StreamingHttpResponse
@@ -18,6 +20,31 @@ from .forms import LoginForm, RegisterForm, RenameForm
 # FastAPI 413 detail strings (exact backend contract).
 DETAIL_TOO_LARGE = "File exceeds the maximum upload size"
 DETAIL_QUOTA = "Storage quota exceeded"
+
+
+def _format_utc(value):
+    """Format an API ISO-8601 timestamp for display; never raises.
+
+    Django's ``date`` filter returns an empty string for raw JSON strings,
+    so timestamps are parsed here. Missing or malformed values render as
+    an em dash instead of breaking the page.
+    """
+    if not isinstance(value, str) or not value:
+        return "\u2014"
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return "\u2014"
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc)
+    return parsed.strftime("%Y-%m-%d %H:%M UTC")
+
+
+def _add_display_times(rows, fields=("created_at",)):
+    for row in rows or []:
+        for field in fields:
+            row[f"{field}_display"] = _format_utc(row.get(field))
+    return rows
 
 
 def _login_redirect(request, note="Please log in to continue."):
@@ -152,12 +179,14 @@ def dashboard(request):
     docs = []
     try:
         usage = fastapi_client.usage(token)
-        docs = fastapi_client.list_documents(
-            token,
-            search=request.GET.get("search", ""),
-            sort=request.GET.get("sort", ""),
-            order=request.GET.get("order", ""),
-            file_type=request.GET.get("file_type", ""),
+        docs = _add_display_times(
+            fastapi_client.list_documents(
+                token,
+                search=request.GET.get("search", ""),
+                sort=request.GET.get("sort", ""),
+                order=request.GET.get("order", ""),
+                file_type=request.GET.get("file_type", ""),
+            )
         )
     except fastapi_client.FastAPIError as exc:
         if exc.status_code == 401:
@@ -271,8 +300,10 @@ def admin_dashboard(request):
         return _login_redirect(request)
 
     try:
-        users = fastapi_client.admin_users(token)
-        documents = fastapi_client.admin_documents(token)
+        users = _add_display_times(fastapi_client.admin_users(token))
+        documents = _add_display_times(
+            fastapi_client.admin_documents(token), ("created_at", "updated_at")
+        )
     except fastapi_client.FastAPIError as exc:
         if exc.status_code == 401:
             return _session_expired(request)

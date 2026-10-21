@@ -70,7 +70,7 @@
         <td>{{ doc.filename }}</td>
         <td class="muted">{{ doc.file_type }}</td>
         <td>{{ doc.file_size_bytes|filesizeformat }}</td>
-        <td class="muted">{{ doc.created_at|date:"Y-m-d H:i" }} UTC</td>
+        <td class="muted">{{ doc.created_at_display }}</td>
         <td>
           <div class="actions">
             <a class="btn secondary" href="{% url 'locker:download' doc.id %}">Download</a>

@@ -27,8 +27,9 @@ Django Web App (web/)          Tkinter Desktop App (desktop/)
   Google Sheets: administrative registry, deferred by the owner's decision.
 ```
 
-- **backend/** — shared FastAPI API: authentication, document operations, AI endpoints.
-  The only component that holds Supabase and OpenRouter credentials.
+- **backend/** — shared FastAPI API: authentication, document operations, AI endpoints,
+  and read-only administrator endpoints. The only component that holds Supabase and
+  OpenRouter credentials.
 - **web/** — Django client (browser UI). Talks to FastAPI over HTTP.
 - **desktop/** — Tkinter Windows client (`py locker.py`). Talks to FastAPI over
   HTTP; may keep optional local offline copies of documents (this device only).
@@ -72,15 +73,17 @@ or Tkinter clients and are never committed to Git.
 | 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | **Complete** |
 | 8 | AI assistant (OpenRouter) | **Complete** |
-| 9 | Admin access (Google Sheets deferred by owner decision) | Planned — not implemented |
+| 9 | Admin access (manual bootstrap, read-only API, web dashboard; Google Sheets deferred) | **Complete** |
 | 10 | Demo polish | Not started |
 
-Phases 1–8 above are implemented and committed. Phase 9 is planned only: no
-administration code, routes, or UI exist yet, and Google Sheets stays deferred
-by the owner's decision. The specification's §32 open decisions remain on
-record and are not silently settled here; registration rate limiting is still
-open. Target Python version: **3.14** (Django 6.1 and current FastAPI both
-support it; backend dependencies install and pass tests on 3.14).
+Phases 1–9 are implemented and committed. Phase 9 provides a single,
+manually bootstrapped administrator with read-only FastAPI endpoints, a web-only
+dashboard at `/admin/`, and audited cross-user downloads. Google Sheets remains
+deferred by the owner's decision, and the desktop client has no admin UI. The
+specification's §32 open-decision list is preserved as written; this README does
+not treat those entries as newly settled. Target Python version: **3.14**
+(Django 6.1 and current FastAPI both support it; backend dependencies install and
+pass tests on 3.14).
 
 ## Setup — backend (Windows, Python 3.14 via the `py` launcher)
 
@@ -143,8 +146,9 @@ once from `backend/`:
 
 The script promotes only the existing normalized `ADMIN_EMAIL` account,
 creates no accounts, changes no passwords, and is idempotent. It is never
-invoked automatically at startup, registration, or request time. Admin routes
-and UI remain Phase 9 work and are not implemented yet.
+invoked automatically at startup, registration, or request time. The admin API
+and the web-only dashboard are implemented in Phase 9 (see below); the desktop
+client has no admin UI.
 
 ## Documents API (Phase 5)
 
@@ -343,6 +347,74 @@ no fallback; retrieval is keyword-based, not semantic (no embeddings/vector
 store in this phase); PDF extraction covers text-based PDFs only; each ask
 re-reads and re-extracts candidate documents (no caching); the free
 OpenRouter route's availability is not guaranteed.
+
+## Admin — single administrator (Phase 9)
+
+Phase 9 is deliberately read-only. There is exactly one administrator, selected
+by the owner and promoted manually; registration can never grant admin.
+
+**Bootstrap (owner-run, once per deployment).** Set `ADMIN_EMAIL` in
+`backend/.env`, register that account through the normal client flow first, then
+run from `backend/`:
+
+```bat
+.venv\Scripts\python.exe scripts\make_admin.py
+```
+
+The script accepts no arguments, creates no accounts, changes no passwords, and
+is idempotent. It is never invoked automatically at startup, registration, or
+request time.
+
+**FastAPI endpoints (read-only; administrator required):**
+
+| Route | Purpose |
+|---|---|
+| `GET /admin/users` | All accounts: id, email, `is_admin`, created_at |
+| `GET /admin/documents` | All documents with owner email; metadata only |
+| `GET /admin/documents/{id}` | Audited download proxied by the backend |
+
+Each route re-checks `users.is_admin` from the database on every request, so a
+normal user receives 403 even with a JWT issued while the account was an admin.
+Listings omit storage paths and document contents.
+
+**Web dashboard (Django, `/admin/`).** Read-only users and documents tables;
+each document can be downloaded through Django → FastAPI. The Admin nav link is
+shown only when the session flag says the user is an administrator, but that
+flag is cosmetic: FastAPI performs the real check on every request. Network,
+401, 403, and 404 failures show safe messages, and the listing exposes no
+document contents or storage paths. The desktop client has no admin UI.
+
+**Privacy boundary.** An administrator can download every user's documents by
+design. Successful admin downloads are recorded in the backend application log
+with administrator id and email, document id, owner id, and a UTC timestamp.
+Failed Storage retrievals return a controlled 500 and do not write a
+successful-download audit entry. This is an application log, not a database
+audit table; retention depends on how the backend is hosted.
+
+**Google Sheets** remains deferred by the owner's decision. No Sheets code,
+credentials, or reporting endpoints exist.
+
+**Verification status (Phase 9):**
+
+- **Live verification (2026-10-21, owner-confirmed account):** scripted HTTP
+  checks against temporary local FastAPI and Django instances connected to the
+  real Supabase project. The bootstrap promoted the existing account;
+  administrator API listings returned real data; the Django `/admin/` page
+  rendered users/documents with formatted UTC timestamps; an administrator
+  download through Django → FastAPI returned the file as an attachment; the
+  audit log contained the administrator id, document id, and a UTC timestamp; a
+  normal user received 403 on all admin endpoints; a forged admin session flag
+  was still denied; owner-scoped document routes returned 404 for a foreign
+  document; and a temporary metadata row with a missing Storage object returned
+  500 with no successful-download audit entry. The temporary row was removed,
+  web checks used a server-side session carrying a real admin JWT, and no
+  secrets were printed; no browser password login was performed.
+- **Not verified live:** Django password login for the administrator (the
+  password was not available to the verification harness; the login page itself
+  renders), and a live registration attempt supplying `is_admin=true` (mocked
+  test only, to avoid creating a disposable account).
+- **Automated tests (final):** backend 126, web 51, desktop 37 — all passing and
+  all external services mocked. They do not prove live behavior.
 
 ## License / scope
 

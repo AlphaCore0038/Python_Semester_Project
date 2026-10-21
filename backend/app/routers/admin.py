@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
@@ -79,16 +80,6 @@ def download_document(
     if row is None:
         raise _not_found()
 
-    # Basic audit trail: who accessed which document, when (log timestamp).
-    logger.info(
-        "admin document download: admin_id=%s admin_email=%s "
-        "document_id=%s owner_id=%s",
-        current_admin["id"],
-        current_admin["email"],
-        row["id"],
-        row["user_id"],
-    )
-
     try:
         data = storage.download_object(row["storage_path"])
     except Exception:
@@ -96,6 +87,18 @@ def download_document(
         raise HTTPException(
             status_code=500, detail="Failed to download document"
         ) from None
+
+    # Audit only successful downloads: who accessed which document, when.
+    logger.info(
+        "admin document download: admin_id=%s admin_email=%s "
+        "document_id=%s owner_id=%s timestamp_utc=%s",
+        current_admin["id"],
+        current_admin["email"],
+        row["id"],
+        row["user_id"],
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+
     return Response(
         content=data,
         media_type=row["file_type"],

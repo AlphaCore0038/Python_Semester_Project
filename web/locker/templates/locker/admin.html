@@ -17,7 +17,7 @@
         <tr>
           <td>{{ user.email }}</td>
           <td>{% if user.is_admin %}Yes{% else %}<span class="muted">No</span>{% endif %}</td>
-          <td class="muted">{{ user.created_at }} UTC</td>
+          <td class="muted">{{ user.created_at_display }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -49,8 +49,8 @@
           </td>
           <td class="muted">{{ doc.file_type }}</td>
           <td>{{ doc.file_size_bytes|filesizeformat }}</td>
-          <td class="muted">{{ doc.created_at }} UTC</td>
-          <td class="muted">{{ doc.updated_at }} UTC</td>
+          <td class="muted">{{ doc.created_at_display }}</td>
+          <td class="muted">{{ doc.updated_at_display }}</td>
           <td>
             <a class="btn secondary" href="{% url 'locker:admin_download' doc.id %}">Download</a>
           </td>
