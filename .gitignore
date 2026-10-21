@@ -40,3 +40,10 @@ staticfiles/
 # OS noise
 Thumbs.db
 .DS_Store
+
+# Editor / local scratch files (never commit)
+.vscode/
+
+# Manual test documents (live-test scratch files, never commit)
+backend/test-locker.txt
+backend/phase8-*.txt

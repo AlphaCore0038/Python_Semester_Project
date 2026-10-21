@@ -24,15 +24,15 @@ Django Web App (web/)          Tkinter Desktop App (desktop/)
   (metadata + files)
 
   Local AI: UI placeholder only — no inference backend in this version.
-  Google Sheets: deferred administrative document registry (later phase).
+  Google Sheets: administrative registry, deferred by the owner's decision.
 ```
 
 - **backend/** — shared FastAPI API: authentication, document operations, AI endpoints.
   The only component that holds Supabase and OpenRouter credentials.
 - **web/** — Django client (browser UI). Talks to FastAPI over HTTP.
-- **desktop/** — Tkinter Windows client (`py locker.py`, later phase). Talks to FastAPI
-  over HTTP; may keep optional local offline copies of documents (this device only).
-- **supabase/** — database schema scripts (added in a later phase).
+- **desktop/** — Tkinter Windows client (`py locker.py`). Talks to FastAPI over
+  HTTP; may keep optional local offline copies of documents (this device only).
+- **supabase/** — database schema script (`schema.sql`, applied in Phase 2).
 
 Key product rules (from the specification): 500 MB cloud storage per user, flat document
 collection (no folders), duplicate filenames allowed, single administrator, no document
@@ -72,12 +72,15 @@ or Tkinter clients and are never committed to Git.
 | 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | **Complete** |
 | 8 | AI assistant (OpenRouter) | **Complete** |
-| 9 | Admin access + Google Sheets registry (deferred) | Not started |
+| 9 | Admin access (Google Sheets deferred by owner decision) | Planned — not implemented |
 | 10 | Demo polish | Not started |
 
-Backend foundation exists (`backend/app/`); clients and feature APIs arrive in
-later phases. Target Python version: **3.14** (Django 6.1 and current FastAPI
-both support it; backend dependencies install and pass tests on 3.14).
+Phases 1–8 above are implemented and committed. Phase 9 is planned only: no
+administration code, routes, or UI exist yet, and Google Sheets stays deferred
+by the owner's decision. The specification's §32 open decisions remain on
+record and are not silently settled here; registration rate limiting is still
+open. Target Python version: **3.14** (Django 6.1 and current FastAPI both
+support it; backend dependencies install and pass tests on 3.14).
 
 ## Setup — backend (Windows, Python 3.14 via the `py` launcher)
 
@@ -292,6 +295,22 @@ safe 503 and the rest of the app keeps working. Override with
   it goes through the existing confirmed rename path (web: the rename
   page, desktop: an explicit yes/no prompt then `PATCH /documents/{id}`).
   The AI endpoints themselves never write anything.
+
+**Verification status (Phase 8):**
+
+- **Live manual tests (previously reported):** AI question answering, document
+  summarization, and filename suggestions were manually verified end-to-end
+  against the real backend, Supabase, and OpenRouter in both the Django web
+  client and the Tkinter desktop client. Happy paths only; filename
+  suggestions required explicit user confirmation before renaming.
+- **Automated tests (historical results):** backend 104, web 37, and desktop
+  37 tests passing after the Phase 8 review fixes. Every automated test mocks
+  external services (Supabase, OpenRouter, and the clients' HTTP calls); no
+  automated integration test calls a live service.
+- **Not verified live:** provider-unavailable 503 responses, retrieval
+  no-match short-circuits, unsupported/encrypted/corrupt file handling, and
+  hostile-filename escaping are exercised by mocked tests only — they have
+  not been run against live services.
 
 **Text extraction (honest scope):** TXT, PDF (via `pypdf`), and DOCX only.
 XLSX and images return a clear "not supported yet" message; scanned PDFs
