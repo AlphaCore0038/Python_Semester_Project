@@ -31,8 +31,9 @@
 -- users
 --   One row per registered account (email + password only, spec section 3).
 --   is_admin is NEVER settable through the registration API; the single
---   administrator is bootstrapped out-of-band (backend script) using the
---   ADMIN_EMAIL environment variable on the server.
+--   administrator is promoted explicitly by the owner-run script
+--   backend/scripts/make_admin.py using ADMIN_EMAIL from backend/.env.
+--   Nothing promotes administrators automatically at startup.
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.users (

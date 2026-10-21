@@ -67,7 +67,7 @@ or Tkinter clients and are never committed to Git.
 | 1 | Repository foundation (this) | **Complete** |
 | 2 | Supabase schema + private storage bucket | **Complete** |
 | 3 | FastAPI core + smoke test | **Complete** |
-| 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (admin bootstrap lands with admin phase) |
+| 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (bootstrap script: `backend/scripts/make_admin.py`) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
 | 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | **Complete** |
@@ -131,6 +131,20 @@ truncated); `is_admin` cannot be set through registration; login returns one
 generic error for wrong password or unknown email; the authenticated user id
 comes only from the verified JWT. Tests use an in-memory fake store — no real
 Supabase project or `.env` is needed for `py -m pytest`.
+
+**Single administrator (manual bootstrap):** `ADMIN_EMAIL` in `backend/.env`
+identifies the one account eligible for explicit promotion. Register that
+account through the normal client flow first, then run the owner-run script
+once from `backend/`:
+
+```bat
+.venv\Scripts\python.exe scripts\make_admin.py
+```
+
+The script promotes only the existing normalized `ADMIN_EMAIL` account,
+creates no accounts, changes no passwords, and is idempotent. It is never
+invoked automatically at startup, registration, or request time. Admin routes
+and UI remain Phase 9 work and are not implemented yet.
 
 ## Documents API (Phase 5)
 

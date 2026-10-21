@@ -58,6 +58,18 @@ def get_user_by_id(user_id: str) -> dict | None:
     return response.data[0] if response.data else None
 
 
+def set_user_admin(user_id: str) -> bool:
+    """Promote exactly one existing user row; owner-run bootstrap only."""
+    response = (
+        get_supabase()
+        .table("users")
+        .update({"is_admin": True})
+        .eq("id", user_id)
+        .execute()
+    )
+    return bool(response.data)
+
+
 # --- documents (Phase 5) ---
 
 _DOCUMENT_COLUMNS = (
