@@ -70,6 +70,18 @@ def set_user_admin(user_id: str) -> bool:
     return bool(response.data)
 
 
+def list_users() -> list[dict]:
+    """Admin listing only; selects non-secret columns in registration order."""
+    response = (
+        get_supabase()
+        .table("users")
+        .select("id, email, is_admin, created_at")
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return response.data or []
+
+
 # --- documents (Phase 5) ---
 
 _DOCUMENT_COLUMNS = (
@@ -143,6 +155,31 @@ def delete_document(document_id: str, user_id: str) -> bool:
         .execute()
     )
     return bool(response.data)
+
+
+def list_documents_admin() -> list[dict]:
+    """Admin listing across all users; newest first (same default as users)."""
+    response = (
+        get_supabase()
+        .table("documents")
+        .select(_DOCUMENT_COLUMNS)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data or []
+
+
+def get_document_admin(document_id: str) -> dict | None:
+    """Admin lookup across users; intentionally not scoped by user_id."""
+    response = (
+        get_supabase()
+        .table("documents")
+        .select(_DOCUMENT_COLUMNS)
+        .eq("id", document_id)
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
 
 
 def sum_usage_and_count(user_id: str) -> tuple[int, int]:

@@ -153,3 +153,21 @@ class SuggestFilenameResponse(BaseModel):
     suggested_filename: str
     reason: str
     model: str
+
+
+class AdminUserResponse(BaseModel):
+    id: str
+    email: str
+    is_admin: bool
+    created_at: str
+
+
+class AdminDocumentResponse(BaseModel):
+    id: str
+    user_id: str
+    owner_email: str | None
+    filename: str
+    file_type: str
+    file_size_bytes: int
+    created_at: str
+    updated_at: str

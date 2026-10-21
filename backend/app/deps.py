@@ -27,3 +27,18 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if user is None:
         raise _unauthorized("Invalid token")
     return user
+
+
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Administrator gate.
+
+    Admin status comes from the fresh per-request database row resolved by
+    get_current_user - never from the JWT, query parameters, headers, or
+    client state. A failed lookup cannot reach this check, so it can never
+    grant access.
+    """
+    if not current_user.get("is_admin"):
+        raise HTTPException(
+            status_code=403, detail="Administrator access required"
+        )
+    return current_user
