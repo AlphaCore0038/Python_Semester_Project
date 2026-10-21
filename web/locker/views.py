@@ -108,6 +108,13 @@ def _start_session(request, email, password, success_note=None):
     request.session.cycle_key()
     request.session["api_token"] = data["access_token"]
     request.session["api_email"] = email
+    # Cosmetic only: shows the Admin nav link. FastAPI re-checks the
+    # database and returns 403 on every admin request regardless.
+    try:
+        profile = fastapi_client.me(data["access_token"])
+    except fastapi_client.FastAPIError:
+        profile = {}
+    request.session["api_is_admin"] = bool(profile.get("is_admin"))
     request.session.modified = True
     if success_note:
         messages.success(request, success_note)
@@ -224,16 +231,8 @@ def upload(request):
     return redirect("locker:dashboard")
 
 
-def download(request, document_id):
-    token = request.session.get("api_token")
-    if not token:
-        return _login_redirect(request)
-
-    try:
-        upstream = fastapi_client.download(token, str(document_id))
-    except fastapi_client.FastAPIError as exc:
-        return _auth_failure(request, exc)
-
+def _stream_response(upstream):
+    """Proxy a streamed FastAPI download without buffering it in memory."""
     def stream():
         try:
             yield from upstream.iter_content(64 * 1024)
@@ -249,6 +248,73 @@ def download(request, document_id):
         content_type=upstream.headers.get("Content-Type", "application/octet-stream"),
         headers=headers,
     )
+
+
+def download(request, document_id):
+    token = request.session.get("api_token")
+    if not token:
+        return _login_redirect(request)
+
+    try:
+        upstream = fastapi_client.download(token, str(document_id))
+    except fastapi_client.FastAPIError as exc:
+        return _auth_failure(request, exc)
+
+    return _stream_response(upstream)
+
+
+@require_http_methods(["GET"])
+def admin_dashboard(request):
+    """Read-only admin overview of all users and documents (spec 14.1)."""
+    token = request.session.get("api_token")
+    if not token:
+        return _login_redirect(request)
+
+    try:
+        users = fastapi_client.admin_users(token)
+        documents = fastapi_client.admin_documents(token)
+    except fastapi_client.FastAPIError as exc:
+        if exc.status_code == 401:
+            return _session_expired(request)
+        if exc.status_code == 403:
+            request.session["api_is_admin"] = False
+            messages.error(request, "Administrator access is required.")
+        elif exc.status_code == 0:
+            messages.error(request, "Cannot reach the service right now. Please try again.")
+        else:
+            messages.error(request, "Could not load the admin dashboard. Please try again.")
+        return redirect("locker:dashboard")
+
+    return render(
+        request,
+        "locker/admin.html",
+        {"users": users, "documents": documents},
+    )
+
+
+def admin_download(request, document_id):
+    """Audited admin download, proxied through FastAPI."""
+    token = request.session.get("api_token")
+    if not token:
+        return _login_redirect(request)
+
+    try:
+        upstream = fastapi_client.admin_download(token, str(document_id))
+    except fastapi_client.FastAPIError as exc:
+        if exc.status_code == 401:
+            return _session_expired(request)
+        if exc.status_code == 403:
+            request.session["api_is_admin"] = False
+            messages.error(request, "Administrator access is required.")
+        elif exc.status_code == 404:
+            messages.error(request, "Document not found.")
+        elif exc.status_code == 0:
+            messages.error(request, "Cannot reach the service right now. Please try again.")
+        else:
+            messages.error(request, "Download failed. Please try again.")
+        return redirect("locker:admin_dashboard")
+
+    return _stream_response(upstream)
 
 
 @require_http_methods(["GET", "POST"])

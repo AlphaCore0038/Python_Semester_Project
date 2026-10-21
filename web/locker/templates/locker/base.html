@@ -58,6 +58,9 @@
     <a class="brand" href="{% url 'locker:dashboard' %}">AI Digital Locker</a>
     <nav>
       {% if request.session.api_token %}
+        {% if request.session.api_is_admin %}
+          <a href="{% url 'locker:admin_dashboard' %}">Admin</a>
+        {% endif %}
         <span class="muted" style="color:#cfd6e0">{{ request.session.api_email }}</span>
         <form class="inline-form" method="post" action="{% url 'locker:logout' %}">
           {% csrf_token %}

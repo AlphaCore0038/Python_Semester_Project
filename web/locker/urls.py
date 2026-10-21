@@ -26,4 +26,10 @@ urlpatterns = [
         name="delete",
     ),
     path("ai/", views.ai, name="ai"),
+    path("admin/", views.admin_dashboard, name="admin_dashboard"),
+    path(
+        "admin/documents/<uuid:document_id>/download/",
+        views.admin_download,
+        name="admin_download",
+    ),
 ]

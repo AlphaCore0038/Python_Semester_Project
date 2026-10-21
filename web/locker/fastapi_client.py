@@ -81,6 +81,11 @@ def login(email, password):
     return _call("POST", "/auth/login", json={"email": email, "password": password}).json()
 
 
+def me(token):
+    """Current user profile: {id, email, is_admin, created_at}."""
+    return _call("GET", "/auth/me", token=token).json()
+
+
 def list_documents(token, *, search="", sort="", order="", file_type=""):
     params = {
         k: v
@@ -117,6 +122,19 @@ def rename(token, document_id, filename):
 
 def delete(token, document_id):
     _call("DELETE", f"/documents/{document_id}", token=token)
+
+
+def admin_users(token):
+    return _call("GET", "/admin/users", token=token).json()
+
+
+def admin_documents(token):
+    return _call("GET", "/admin/documents", token=token).json()
+
+
+def admin_download(token, document_id):
+    """Streams another user's document; caller must close() the response."""
+    return _call("GET", f"/admin/documents/{document_id}", token=token, stream=True)
 
 
 def ai_status(token):

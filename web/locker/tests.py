@@ -70,9 +70,13 @@ class MockedAPITestCase(TestCase):
             status, json_data, **kwargs
         )
 
-    def _login(self):
+    def _login(self, is_admin=False):
         self.route("POST", "/auth/login", json_data={
             "access_token": JWT, "token_type": "bearer", "expires_in": 86400,
+        })
+        self.route("GET", "/auth/me", json_data={
+            "id": "user-1", "email": "ana@example.com",
+            "is_admin": is_admin, "created_at": "2026-10-20T10:00:00Z",
         })
         resp = self.client.post(
             reverse("locker:login"),
@@ -81,9 +85,9 @@ class MockedAPITestCase(TestCase):
         self.assertEqual(resp.status_code, 302)
         return resp
 
-    def _seed_session(self):
+    def _seed_session(self, is_admin=False):
         """Simulate an already-authenticated session."""
-        self._login()
+        self._login(is_admin=is_admin)
 
     def _api_doc_calls(self):
         self.route("GET", "/documents/usage", json_data=USAGE)
@@ -99,6 +103,10 @@ class AuthFlowTests(MockedAPITestCase):
         self.route("POST", "/auth/register", status=201, json_data={"id": "u", "email": "a@b.c"})
         self.route("POST", "/auth/login", json_data={
             "access_token": JWT, "token_type": "bearer", "expires_in": 86400,
+        })
+        self.route("GET", "/auth/me", json_data={
+            "id": "u", "email": "a@b.co", "is_admin": False,
+            "created_at": "2026-10-20T10:00:00Z",
         })
         resp = self.client.post(
             reverse("locker:register"),
@@ -574,3 +582,157 @@ class AITests(MockedAPITestCase):
         assert fastapi_client.AI_TIMEOUT == (5, 90)
         assert regular_timeouts and all(t == fastapi_client.TIMEOUT for t in regular_timeouts)
         assert fastapi_client.TIMEOUT == (5, 15)
+
+
+ADMIN_USER = {
+    "id": "admin-1",
+    "email": "admin@example.com",
+    "is_admin": True,
+    "created_at": "2026-10-01T09:00:00Z",
+}
+
+NORMAL_USER = {
+    "id": "user-1",
+    "email": "ana@example.com",
+    "is_admin": False,
+    "created_at": "2026-10-02T09:00:00Z",
+}
+
+ADMIN_DOC = {**DOC, "user_id": "user-1", "owner_email": "ana@example.com"}
+
+
+class AdminTests(MockedAPITestCase):
+    def _seed_admin(self, users=None, documents=None):
+        self._seed_session(is_admin=True)
+        self.route(
+            "GET", "/admin/users",
+            json_data=[ADMIN_USER, NORMAL_USER] if users is None else users,
+        )
+        self.route(
+            "GET", "/admin/documents",
+            json_data=[ADMIN_DOC] if documents is None else documents,
+        )
+
+    def test_admin_nav_link_visible_only_for_admins(self):
+        self._seed_session(is_admin=True)
+        self._api_doc_calls()
+        page = self.client.get(reverse("locker:dashboard"))
+        self.assertContains(page, reverse("locker:admin_dashboard"))
+
+        self.client.post(reverse("locker:logout"))
+        self._seed_session(is_admin=False)
+        self._api_doc_calls()
+        page = self.client.get(reverse("locker:dashboard"))
+        self.assertNotContains(page, reverse("locker:admin_dashboard"))
+
+    def test_admin_page_lists_users_and_documents_without_leaking(self):
+        self._seed_admin()
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "admin@example.com")
+        self.assertContains(resp, "ana@example.com")
+        self.assertContains(resp, "notes.pdf")
+        self.assertContains(resp, "application/pdf")
+        self.assertContains(resp, "2026-10-20T10:00:00Z")
+        self.assertContains(resp, "2026-10-01T09:00:00Z")
+        self.assertContains(
+            resp,
+            reverse("locker:admin_download", kwargs={"document_id": DOC["id"]}),
+        )
+        body = resp.content.decode()
+        self.assertNotIn(JWT, body)
+        self.assertNotIn("storage_path", body)
+        admin_calls = [
+            u for _m, u, _kw in self.calls
+            if u.endswith(("/admin/users", "/admin/documents"))
+        ]
+        self.assertEqual(len(admin_calls), 2)
+
+    def test_admin_page_empty_state(self):
+        self._seed_admin(users=[], documents=[])
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertContains(resp, "No users found.")
+        self.assertContains(resp, "No documents found.")
+
+    def test_backend_403_denies_even_when_session_flag_says_admin(self):
+        self._seed_session(is_admin=True)
+        self.route("GET", "/admin/users", status=403,
+                   json_data={"detail": "Administrator access required"})
+        self._api_doc_calls()
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("locker:dashboard"))
+        self.assertFalse(self.client.session["api_is_admin"])
+        follow = self.client.get(resp.url)
+        self.assertContains(follow, "Administrator access is required.")
+        self.assertFalse(
+            [u for _m, u, _kw in self.calls if "/admin/documents" in u]
+        )
+
+    def test_anonymous_admin_pages_redirect_to_login(self):
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith("/login"), resp.url)
+        resp = self.client.get(
+            reverse("locker:admin_download", kwargs={"document_id": DOC["id"]})
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith("/login"), resp.url)
+
+    def test_admin_expired_session_redirects_to_login(self):
+        self._seed_session(is_admin=True)
+        self.route("GET", "/admin/users", status=401,
+                   json_data={"detail": "Invalid token"})
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, "/login/")
+        self.assertNotIn("api_token", self.client.session)
+
+    def test_admin_backend_unreachable_shows_generic_error(self):
+        self._seed_session(is_admin=True)
+        self.requests.request.side_effect = real_requests.ConnectionError
+        resp = self.client.get(reverse("locker:admin_dashboard"))
+        self.assertEqual(resp.status_code, 302)
+        follow = self.client.get(resp.url)
+        self.assertContains(follow, "Cannot reach the service")
+
+    def test_admin_download_streams_attachment_from_admin_route(self):
+        self._seed_session(is_admin=True)
+        doc_id = DOC["id"]
+        self.route("GET", f"/admin/documents/{doc_id}", content=b"%PDF-admin", headers={
+            "Content-Type": "application/pdf",
+            "Content-Disposition": 'attachment; filename="notes.pdf"',
+        })
+        resp = self.client.get(
+            reverse("locker:admin_download", kwargs={"document_id": doc_id})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "application/pdf")
+        self.assertEqual(resp["Content-Disposition"], 'attachment; filename="notes.pdf"')
+        self.assertEqual(b"".join(resp.streaming_content), b"%PDF-admin")
+        download_calls = [
+            u for _m, u, _kw in self.calls if u.endswith(f"/admin/documents/{doc_id}")
+        ]
+        self.assertEqual(len(download_calls), 1)
+
+    def test_admin_download_not_found_shows_safe_message(self):
+        self._seed_admin()
+        self.route("GET", f"/admin/documents/{DOC['id']}", status=404,
+                   json_data={"detail": "Document not found"})
+        resp = self.client.get(
+            reverse("locker:admin_download", kwargs={"document_id": DOC["id"]})
+        )
+        self.assertEqual(resp.status_code, 302)
+        follow = self.client.get(resp.url)
+        self.assertContains(follow, "Document not found")
+
+    def test_admin_download_forbidden_clears_flag(self):
+        self._seed_admin()
+        self.route("GET", f"/admin/documents/{DOC['id']}", status=403,
+                   json_data={"detail": "Administrator access required"})
+        resp = self.client.get(
+            reverse("locker:admin_download", kwargs={"document_id": DOC["id"]})
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("locker:admin_dashboard"))
+        self.assertFalse(self.client.session["api_is_admin"])
