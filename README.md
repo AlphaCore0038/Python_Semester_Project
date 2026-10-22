@@ -54,11 +54,11 @@ supabase/         Schema scripts (Phase 2)
 Real environment files (`.env`) are gitignored. Templates are committed:
 
 - Root `.env.example` — `FASTAPI_BASE_URL` for the clients.
-- `backend/.env.example` — Supabase URL + service-role key, JWT secret, OpenRouter key,
-  admin email, storage limits.
+- `backend/.env.example` — Supabase URL + service-role key, OpenRouter key,
+  admin email, session lifetime, storage limits.
 
-Privileged credentials (Supabase service-role key, JWT signing secret, OpenRouter API
-key) exist **only** in `backend/.env` on the server. They are never placed in the Django
+Privileged credentials (Supabase service-role key, OpenRouter API key) exist
+**only** in `backend/.env` on the server. They are never placed in the Django
 or Tkinter clients and are never committed to Git.
 
 ## Development status
@@ -68,7 +68,7 @@ or Tkinter clients and are never committed to Git.
 | 1 | Repository foundation (this) | **Complete** |
 | 2 | Supabase schema + private storage bucket | **Complete** |
 | 3 | FastAPI core + smoke test | **Complete** |
-| 4 | Authentication (register/login, JWT, admin bootstrap) | **Complete** (bootstrap script: `backend/scripts/make_admin.py`) |
+| 4 | Authentication (register/login, opaque sessions, admin bootstrap) | **Complete** (bootstrap script: `backend/scripts/make_admin.py`) |
 | 5 | Documents API (upload, quota, search, download, rename, delete) | **Complete** |
 | 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | **Complete** |
@@ -101,8 +101,9 @@ pip install -r requirements.txt
 :: 3. Configuration (never commit the real .env)
 copy .env.example .env
 notepad .env
-:: Fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET (required),
-:: plus any optional values you need. Placeholder values are rejected at startup.
+:: Fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (required), set
+:: ADMIN_EMAIL for the admin bootstrap, and adjust optional values. Placeholder
+:: values are rejected at startup.
 
 :: 4. Run the API
 uvicorn app.main:app --reload
@@ -118,22 +119,50 @@ venv (see the Phase 6 and Phase 7 sections below).
 ## Authentication (Phase 4)
 
 FastAPI-managed email/password auth against the `public.users` table
-(no Supabase Auth). Passwords are bcrypt-hashed; access tokens are HS256 JWTs
-signed with `JWT_SECRET`, valid for `JWT_EXPIRY_MINUTES` (default 24 h).
+(no Supabase Auth). Passwords are bcrypt-hashed. Login creates a random opaque
+session token; only its SHA-256 hash is stored in `public.auth_sessions`. The
+raw token is returned in the login response and sent back as a Bearer token.
+Sessions expire after `SESSION_EXPIRY_MINUTES` (default 24 h), and logout
+deletes the row to revoke the session immediately.
 
 ```bat
 :: With the server running (uvicorn app.main:app --reload):
 curl -X POST http://127.0.0.1:8000/auth/register -H "Content-Type: application/json" -d "{\"email\":\"demo@example.com\",\"password\":\"correct-horse-1\"}"
 curl -X POST http://127.0.0.1:8000/auth/login    -H "Content-Type: application/json" -d "{\"email\":\"demo@example.com\",\"password\":\"correct-horse-1\"}"
 curl http://127.0.0.1:8000/auth/me -H "Authorization: Bearer <access_token>"
+curl -X POST http://127.0.0.1:8000/auth/logout -H "Authorization: Bearer <access_token>"
 ```
+
+**Required schema.** The `auth_sessions` table must exist before login works.
+Apply the current [`supabase/schema.sql`](supabase/schema.sql) in the Supabase
+SQL Editor, or run only this migration:
+
+```sql
+create table if not exists public.auth_sessions (
+    token_hash text primary key,
+    user_id    uuid not null references public.users (id) on delete cascade,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists auth_sessions_user_id_idx
+    on public.auth_sessions (user_id);
+
+alter table public.auth_sessions enable row level security;
+```
+
+There is no data migration: tokens issued by the previous signed-token
+implementation are not valid session rows, so every user logs in again once
+after deploying this schema and backend version. No cleanup job is required;
+expired rows are
+ignored by the backend and can be deleted manually if desired.
 
 Rules enforced by the API: emails are normalized to lowercase (duplicate
 registration is case-insensitive); passwords must be 8–72 UTF-8 bytes (never
 truncated); `is_admin` cannot be set through registration; login returns one
 generic error for wrong password or unknown email; the authenticated user id
-comes only from the verified JWT. Tests use an in-memory fake store — no real
-Supabase project or `.env` is needed for `py -m pytest`.
+comes only from the active session row. Tests use an in-memory fake store - no
+real Supabase project or `.env` is needed for `py -m pytest`.
 
 **Single administrator (manual bootstrap):** `ADMIN_EMAIL` in `backend/.env`
 identifies the one account eligible for explicit promotion. Register that
@@ -153,7 +182,7 @@ client has no admin UI.
 ## Documents API (Phase 5)
 
 All routes require `Authorization: Bearer <access_token>`; the user is always
-resolved from the verified JWT (never from request data).
+resolved from the active session (never from request data).
 
 | Route | Purpose |
 |---|---|
@@ -178,8 +207,9 @@ database, so two truly simultaneous uploads could race past the 500 MB limit
 (negligible for personal use). If Storage cleanup fails after a metadata
 delete, an orphaned object may remain (logged; excluded from quota).
 
-Supabase notes: project `ai-digital-locker` (ap-south-1); tables `public.users`
-and `public.documents` with RLS enabled; private Storage bucket `documents`.
+Supabase notes: project `ai-digital-locker` (ap-south-1); tables `public.users`,
+`public.auth_sessions`, and `public.documents` with RLS enabled; private Storage
+bucket `documents`.
 The Supabase Free plan caps each uploaded object at 50 MB
 (`MAX_UPLOAD_BYTES=52428800`); the application-level per-user quota remains
 500 MB (`STORAGE_QUOTA_BYTES=524288000`).
@@ -188,7 +218,7 @@ The Supabase Free plan caps each uploaded object at 50 MB
 
 Django provides the UI and session management; FastAPI remains the sole API and
 authorization boundary. Django calls FastAPI over HTTP only — it never touches
-Supabase and never holds service-role or JWT-signing credentials.
+Supabase and never holds service-role credentials.
 
 ```bat
 :: 1. Virtual environment + dependencies (Windows, Python 3.14)
@@ -219,8 +249,8 @@ streaming download proxy, rename, and delete behind a confirmation page.
 Expired sessions (401) flush Django state and redirect to login; API/network
 failures show safe generic messages.
 
-Security posture: the FastAPI JWT lives only in Django's server-side session
-store (database-backed cookie holds an opaque session key — HttpOnly,
+Security posture: the FastAPI session token lives only in Django's
+server-side session store (database-backed cookie holds an opaque session key — HttpOnly,
 SameSite=Lax, Secure when `DEBUG=False`); it is never rendered into HTML,
 URLs, or JavaScript. Session keys rotate on every login, all state-changing
 forms carry CSRF tokens, and `DJANGO_SECRET_KEY` is required from the
@@ -261,11 +291,12 @@ documents, rename, delete-with-confirmation, search/sort/MIME filter using
 the real API parameters, and expired-session handling (401 returns to the
 login screen).
 
-**Sessions:** the JWT is stored in plaintext at
+**Sessions:** the session token is stored in plaintext at
 `%APPDATA%\AiDigitalLocker\session.json` (per-user folder, atomic writes).
 It is never printed, logged, shown in the UI, or placed in a URL. Logout
-clears it. Same-Windows-user access to that file is a documented
-limitation; OS-level encryption (DPAPI) is possible future hardening.
+clears it locally and best-effort revokes the server-side session. Same-
+Windows-user access to that file is a documented limitation; OS-level
+encryption (DPAPI) is possible future hardening.
 
 **Offline copies (spec §11):** optional per-device copies live under
 `desktop/offline/<document_id>/<filename>` (gitignored). They never
@@ -276,16 +307,17 @@ place only when complete.
 
 **Known limitations:** one network operation at a time (buttons disable
 while one runs); the 50 MiB/500 MB messages rely on the backend's exact
-413 wording (pinned by backend tests); logout does not revoke the
-server-side JWT (it simply expires after 24 h).
+413 wording (pinned by backend tests); if the backend is unreachable during
+logout, local state is still cleared but the server-side row remains until it
+expires (24 h by default).
 
 ## AI assistant — Cloud AI via OpenRouter (Phase 8)
 
 The assistant is optional: the locker is fully usable without it (spec §17).
 It runs entirely inside the FastAPI backend, which is the only component
-holding the OpenRouter key. Clients pass a Bearer JWT; every AI endpoint
-resolves the user from the verified token and touches documents only via
-the same user-scoped database/storage paths the rest of the API uses.
+holding the OpenRouter key. Clients pass a Bearer session token; every AI
+endpoint resolves the user from the active session and touches documents only
+via the same user-scoped database/storage paths the rest of the API uses.
 
 **Model:** `minimax/minimax-m3.1-flash:free` (MiniMax M3.1 Flash, via
 OpenRouter's free route). There is **no fallback model**: if the free route
@@ -374,7 +406,8 @@ request time.
 | `GET /admin/documents/{id}` | Audited download proxied by the backend |
 
 Each route re-checks `users.is_admin` from the database on every request, so a
-normal user receives 403 even with a JWT issued while the account was an admin.
+normal user receives 403 even with a session created while the account was an
+admin.
 Listings omit storage paths and document contents.
 
 **Web dashboard (Django, `/admin/`).** Read-only users and documents tables;
@@ -407,13 +440,13 @@ credentials, or reporting endpoints exist.
   was still denied; owner-scoped document routes returned 404 for a foreign
   document; and a temporary metadata row with a missing Storage object returned
   500 with no successful-download audit entry. The temporary row was removed,
-  web checks used a server-side session carrying a real admin JWT, and no
-  secrets were printed; no browser password login was performed.
+  web checks used a server-side session carrying a real administrator access
+  token, and no secrets were printed; no browser password login was performed.
 - **Not verified live:** Django password login for the administrator (the
   password was not available to the verification harness; the login page itself
   renders), and a live registration attempt supplying `is_admin=true` (mocked
   test only, to avoid creating a disposable account).
-- **Automated tests (final):** backend 126, web 51, desktop 37 — all passing and
+- **Automated tests (auth migration):** backend 131, web 52, desktop 39 — all passing and
   all external services mocked. They do not prove live behavior.
 
 ## License / scope
