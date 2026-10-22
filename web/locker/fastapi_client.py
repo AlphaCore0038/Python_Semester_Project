@@ -2,8 +2,8 @@
 
 Every FastAPI call in the web client goes through this module. Django
 never talks to Supabase directly and never handles service-role keys.
-The JWT is supplied by the view from the server-side session; it is
-never rendered into HTML, URLs, or browser JavaScript.
+The session token is supplied by the view from the server-side session; it
+is never rendered into HTML, URLs, or browser JavaScript.
 """
 import requests
 from django.conf import settings
@@ -84,6 +84,11 @@ def login(email, password):
 def me(token):
     """Current user profile: {id, email, is_admin, created_at}."""
     return _call("GET", "/auth/me", token=token).json()
+
+
+def logout(token):
+    """Invalidate the server-side session (best effort at the view)."""
+    _call("POST", "/auth/logout", token=token)
 
 
 def list_documents(token, *, search="", sort="", order="", file_type=""):

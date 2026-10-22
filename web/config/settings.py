@@ -79,8 +79,8 @@ DATABASES = {
     }
 }
 
-# Server-side sessions only: the FastAPI JWT lives inside the session
-# record on disk, never in a client-readable cookie or in page HTML.
+# Server-side sessions only: the FastAPI session token lives inside the
+# session record on disk, never in a client-readable cookie or in page HTML.
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

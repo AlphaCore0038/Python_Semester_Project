@@ -1,7 +1,7 @@
 """Views for the Django web client.
 
 All application operations are proxied to FastAPI via
-``fastapi_client``. Django stores only the FastAPI JWT in the
+``fastapi_client``. Django stores only the FastAPI session token in the
 server-side session; it never renders the token into HTML, URLs, or
 JavaScript, and it never contacts Supabase directly.
 """
@@ -121,7 +121,7 @@ def register_view(request):
 
 def _start_session(request, email, password, success_note=None):
     """Login via FastAPI, rotate the session key (fixation defense), and
-    store the JWT server-side."""
+    store the opaque session token server-side."""
     try:
         data = fastapi_client.login(email, password)
     except fastapi_client.FastAPIError as exc:
@@ -164,6 +164,14 @@ def login_view(request):
 
 @require_POST
 def logout_view(request):
+    token = request.session.get("api_token")
+    if token:
+        # Revoke remotely, but local logout must still work if the backend
+        # is unreachable or the session already expired.
+        try:
+            fastapi_client.logout(token)
+        except fastapi_client.FastAPIError:
+            pass
     request.session.flush()
     messages.info(request, "You have been logged out.")
     return redirect(reverse("locker:login"))

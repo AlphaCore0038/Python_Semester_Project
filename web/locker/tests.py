@@ -13,7 +13,7 @@ from django.urls import reverse
 from . import fastapi_client, views
 from .views import DETAIL_QUOTA, DETAIL_TOO_LARGE
 
-JWT = "jwt-test-token-do-not-leak"
+SESSION_TOKEN = "session-test-token-do-not-leak"
 
 
 def make_response(status=200, json_data=None, headers=None, content=b""):
@@ -57,6 +57,7 @@ class MockedAPITestCase(TestCase):
         self.calls = []
         self.requests.request.side_effect = self._route
         self.requests.get.side_effect = self._route
+        self.route("POST", "/auth/logout", status=204)
 
     def _route(self, method, url, **kwargs):
         self.calls.append((method, url, kwargs))
@@ -72,7 +73,7 @@ class MockedAPITestCase(TestCase):
 
     def _login(self, is_admin=False):
         self.route("POST", "/auth/login", json_data={
-            "access_token": JWT, "token_type": "bearer", "expires_in": 86400,
+            "access_token": SESSION_TOKEN, "token_type": "bearer", "expires_in": 86400,
         })
         self.route("GET", "/auth/me", json_data={
             "id": "user-1", "email": "ana@example.com",
@@ -95,14 +96,14 @@ class MockedAPITestCase(TestCase):
 
 
 class AuthFlowTests(MockedAPITestCase):
-    def test_register_auto_login_rotates_session_and_stores_jwt(self):
+    def test_register_auto_login_rotates_session_and_stores_token(self):
         s = self.client.session
         s["probe"] = "1"
         s.save()
         key_before = self.client.session.session_key
         self.route("POST", "/auth/register", status=201, json_data={"id": "u", "email": "a@b.c"})
         self.route("POST", "/auth/login", json_data={
-            "access_token": JWT, "token_type": "bearer", "expires_in": 86400,
+            "access_token": SESSION_TOKEN, "token_type": "bearer", "expires_in": 86400,
         })
         self.route("GET", "/auth/me", json_data={
             "id": "u", "email": "a@b.co", "is_admin": False,
@@ -115,7 +116,7 @@ class AuthFlowTests(MockedAPITestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.url, "/")
         self.assertNotEqual(self.client.session.session_key, key_before)
-        self.assertEqual(self.client.session["api_token"], JWT)
+        self.assertEqual(self.client.session["api_token"], SESSION_TOKEN)
         # register call normalized the email
         method, url, kw = self.calls[0]
         self.assertEqual((method, url.endswith("/auth/register")), ("POST", True))
@@ -139,7 +140,7 @@ class AuthFlowTests(MockedAPITestCase):
         key_before = self.client.session.session_key
         self._login()
         self.assertNotEqual(self.client.session.session_key, key_before)
-        self.assertEqual(self.client.session["api_token"], JWT)
+        self.assertEqual(self.client.session["api_token"], SESSION_TOKEN)
 
     def test_login_wrong_password_generic_error(self):
         self.route("POST", "/auth/login", status=401,
@@ -153,12 +154,31 @@ class AuthFlowTests(MockedAPITestCase):
         self.assertContains(page, "Incorrect email or password")
         self.assertNotIn("api_token", self.client.session)
 
-    def test_logout_is_post_only_and_clears_session(self):
+    def test_logout_is_post_only_clears_session_and_revokes_remote(self):
         self._login()
         get_resp = self.client.get(reverse("locker:logout"))
         self.assertEqual(get_resp.status_code, 405)
         resp = self.client.post(reverse("locker:logout"))
         self.assertEqual(resp.status_code, 302)
+        self.assertNotIn("api_token", self.client.session)
+        logout_calls = [
+            (method, url, kwargs)
+            for method, url, kwargs in self.calls
+            if url.endswith("/auth/logout")
+        ]
+        self.assertEqual(len(logout_calls), 1)
+        method, _url, kwargs = logout_calls[0]
+        self.assertEqual(method, "POST")
+        self.assertEqual(
+            kwargs["headers"]["Authorization"], f"Bearer {SESSION_TOKEN}"
+        )
+
+    def test_logout_still_clears_locally_when_backend_unreachable(self):
+        self._login()
+        self.requests.request.side_effect = real_requests.ConnectionError
+        resp = self.client.post(reverse("locker:logout"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("locker:login"))
         self.assertNotIn("api_token", self.client.session)
 
     def test_unauthenticated_pages_redirect_to_login(self):
@@ -168,19 +188,19 @@ class AuthFlowTests(MockedAPITestCase):
             self.assertEqual(resp.status_code, 302, name)
             self.assertTrue(resp.url.startswith("/login"), resp.url)
 
-    def test_jwt_never_appears_in_html_or_urls_or_cookies(self):
+    def test_session_token_never_appears_in_html_or_urls_or_cookies(self):
         self._seed_session()
         self._api_doc_calls()
         resp = self.client.get(reverse("locker:dashboard"))
         self.assertEqual(resp.status_code, 200)
-        self.assertNotIn(JWT, resp.content.decode())
-        # The session cookie holds only the opaque session key, never the JWT.
+        self.assertNotIn(SESSION_TOKEN, resp.content.decode())
+        # The session cookie holds only the opaque session key, never the session token.
         session_cookie = self.client.cookies.get("sessionid")
         if session_cookie is not None:
-            self.assertNotIn(JWT, session_cookie.value)
+            self.assertNotIn(SESSION_TOKEN, session_cookie.value)
         # None of the backend calls put the token in a URL.
         for _m, url, _kw in self.calls:
-            self.assertNotIn(JWT, url)
+            self.assertNotIn(SESSION_TOKEN, url)
 
 
 class CsrfTests(MockedAPITestCase):
@@ -654,7 +674,7 @@ class AdminTests(MockedAPITestCase):
             reverse("locker:admin_download", kwargs={"document_id": DOC["id"]}),
         )
         body = resp.content.decode()
-        self.assertNotIn(JWT, body)
+        self.assertNotIn(SESSION_TOKEN, body)
         self.assertNotIn("storage_path", body)
         admin_calls = [
             u for _m, u, _kw in self.calls
