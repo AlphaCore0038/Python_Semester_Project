@@ -1,7 +1,7 @@
 """AI assistant endpoints - Cloud AI via OpenRouter (spec 6, 14, 16).
 
-Every endpoint requires a verified Bearer JWT; documents are accessed only
-through user-scoped db/storage calls, so a token can never reach another
+Every endpoint requires a valid Bearer session token; documents are accessed
+only through user-scoped db/storage calls, so a token can never reach another
 user's file. The model has no tools and no side effects: filename
 suggestions are proposals only - applying one goes through the existing
 PATCH /documents/{id} rename path with its own validation.

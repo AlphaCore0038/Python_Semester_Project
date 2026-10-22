@@ -1,21 +1,20 @@
-"""Authentication tests — in-memory fake user store; no real Supabase, no real .env."""
+"""Authentication tests — in-memory fake user/session store; no real Supabase."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import config, db
 from app.main import app
-from app.security import create_access_token, hash_password
+from app.security import hash_password, hash_session_token
 
 VALID_ENV = {
     "SUPABASE_URL": "https://example-project.supabase.co",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
-    "JWT_SECRET": "test-jwt-secret-at-least-32-bytes-long-ok",
 }
 
 CREATED_AT = "2026-10-20T00:00:00+00:00"
@@ -24,6 +23,7 @@ CREATED_AT = "2026-10-20T00:00:00+00:00"
 class FakeUserStore:
     def __init__(self) -> None:
         self.users: dict[str, dict] = {}
+        self.sessions: dict[str, dict] = {}
 
     def create_user(self, email: str, password_hash: str) -> dict:
         if email in self.users:
@@ -47,15 +47,30 @@ class FakeUserStore:
                 return user
         return None
 
+    def create_session(self, token_hash: str, user_id: str, expires_at: str) -> dict:
+        row = {
+            "token_hash": token_hash,
+            "user_id": user_id,
+            "expires_at": expires_at,
+        }
+        self.sessions[token_hash] = row
+        return row
+
+    def get_session(self, token_hash: str) -> dict | None:
+        return self.sessions.get(token_hash)
+
+    def delete_session(self, token_hash: str) -> bool:
+        return self.sessions.pop(token_hash, None) is not None
+
 
 @pytest.fixture()
 def store(monkeypatch: pytest.MonkeyPatch) -> FakeUserStore:
     for name in (
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "JWT_SECRET",
         "ADMIN_EMAIL",
         "OPENROUTER_API_KEY",
+        "SESSION_EXPIRY_MINUTES",
     ):
         monkeypatch.delenv(name, raising=False)
     for name, value in VALID_ENV.items():
@@ -63,9 +78,15 @@ def store(monkeypatch: pytest.MonkeyPatch) -> FakeUserStore:
     config.get_settings.cache_clear()
 
     fake = FakeUserStore()
-    monkeypatch.setattr(db, "create_user", fake.create_user)
-    monkeypatch.setattr(db, "get_user_by_email", fake.get_user_by_email)
-    monkeypatch.setattr(db, "get_user_by_id", fake.get_user_by_id)
+    for name, target in (
+        ("create_user", fake.create_user),
+        ("get_user_by_email", fake.get_user_by_email),
+        ("get_user_by_id", fake.get_user_by_id),
+        ("create_session", fake.create_session),
+        ("get_session", fake.get_session),
+        ("delete_session", fake.delete_session),
+    ):
+        monkeypatch.setattr(db, name, target)
     yield fake
     config.get_settings.cache_clear()
 
@@ -85,6 +106,16 @@ def login(client: TestClient, email: str, password: str) -> dict:
 
 def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def make_token(user: dict, ttl_seconds: int = 3600) -> str:
+    """Insert a fake session row directly; mirrors what login does."""
+    token = f"test-session-{uuid.uuid4()}"
+    expires_at = (
+        datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    ).isoformat()
+    db.create_session(hash_session_token(token), user["id"], expires_at)
+    return token
 
 
 # --- registration ---
@@ -156,7 +187,7 @@ def test_register_rejects_invalid_email(client: TestClient, store: FakeUserStore
 
 # --- login ---
 
-def test_login_success_returns_bearer_token(
+def test_login_success_returns_opaque_bearer_token(
     client: TestClient, store: FakeUserStore
 ) -> None:
     register(client, "alice@example.com", "correct-horse-1")
@@ -165,8 +196,23 @@ def test_login_success_returns_bearer_token(
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["expires_in"] == 86400
-    assert body["access_token"]
+    token = body["access_token"]
+    assert token
+    assert "." not in token  # opaque, not a structured/signed token
     assert "password" not in response.text
+    # Only the hash is stored, never the raw token.
+    assert token not in store.sessions
+    assert hash_session_token(token) in store.sessions
+
+
+def test_login_creates_independent_sessions(
+    client: TestClient, store: FakeUserStore
+) -> None:
+    register(client, "alice@example.com", "correct-horse-1")
+    first = login(client, "alice@example.com", "correct-horse-1").json()["access_token"]
+    second = login(client, "alice@example.com", "correct-horse-1").json()["access_token"]
+    assert first != second
+    assert len(store.sessions) == 2
 
 
 def test_login_wrong_password_and_unknown_email_share_error(
@@ -211,9 +257,7 @@ def test_me_with_invalid_token_is_401(
 
 def test_me_with_expired_token_is_401(client: TestClient, store: FakeUserStore) -> None:
     user = store.create_user("old@example.com", hash_password("correct-horse-1"))
-    expired = create_access_token(
-        user["id"], user["email"], expires_delta=timedelta(seconds=-1)
-    )
+    expired = make_token(user, ttl_seconds=-1)
     response = client.get("/auth/me", headers=auth_header(expired))
     assert response.status_code == 401
     assert response.json() == {"detail": "Token expired"}
@@ -223,23 +267,55 @@ def test_me_with_token_of_deleted_user_is_401(
     client: TestClient, store: FakeUserStore
 ) -> None:
     user = store.create_user("gone@example.com", hash_password("correct-horse-1"))
-    token = create_access_token(user["id"], user["email"])
-    store.users.clear()  # user deleted after token issued
+    token = make_token(user)
+    store.users.clear()  # user deleted after session issued
     response = client.get("/auth/me", headers=auth_header(token))
     assert response.status_code == 401
 
 
-def test_me_with_non_uuid_subject_is_401(client: TestClient, store: FakeUserStore) -> None:
-    import app.security as security
-
-    token = security.jwt.encode(
-        {"sub": "not-a-uuid", "exp": 9999999999},
-        "test-jwt-secret-at-least-32-bytes-long-ok",
-        algorithm="HS256",
+def test_legacy_signed_tokens_are_rejected(
+    client: TestClient, store: FakeUserStore
+) -> None:
+    # A previously issued signed token is just an unknown opaque token now.
+    legacy_token = (
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+        "eyJzdWIiOiJ4IiwiZW1haWwiOiJ4QHkuY29tIn0."
+        "signature"
     )
-    response = client.get("/auth/me", headers=auth_header(token))
+    response = client.get("/auth/me", headers=auth_header(legacy_token))
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+# --- logout ---
+
+def test_logout_revokes_current_session(
+    client: TestClient, store: FakeUserStore
+) -> None:
+    register(client, "alice@example.com", "correct-horse-1")
+    token = login(client, "alice@example.com", "correct-horse-1").json()["access_token"]
+
+    response = client.post("/auth/logout", headers=auth_header(token))
+    assert response.status_code == 204
+    assert client.get("/auth/me", headers=auth_header(token)).status_code == 401
+    # Idempotent: logging out again is still a no-op success.
+    assert client.post("/auth/logout", headers=auth_header(token)).status_code == 204
+
+
+def test_logout_only_revokes_current_session(
+    client: TestClient, store: FakeUserStore
+) -> None:
+    register(client, "alice@example.com", "correct-horse-1")
+    first = login(client, "alice@example.com", "correct-horse-1").json()["access_token"]
+    second = login(client, "alice@example.com", "correct-horse-1").json()["access_token"]
+
+    assert client.post("/auth/logout", headers=auth_header(first)).status_code == 204
+    assert client.get("/auth/me", headers=auth_header(first)).status_code == 401
+    assert client.get("/auth/me", headers=auth_header(second)).status_code == 200
+
+
+def test_logout_requires_auth(client: TestClient) -> None:
+    assert client.post("/auth/logout").status_code == 401
 
 
 def test_health_still_works(client: TestClient) -> None:

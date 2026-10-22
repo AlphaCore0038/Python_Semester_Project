@@ -1,14 +1,21 @@
-"""Authentication routes: register, login, current-user profile."""
+"""Authentication routes: register, login, current-user profile, logout."""
 
 from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app import db
 from app.config import get_settings
-from app.deps import get_current_user
+from app.deps import get_current_user, oauth2_scheme
 from app.schemas import LoginRequest, RegisterRequest, RegisterResponse, TokenResponse, UserResponse
-from app.security import create_access_token, hash_password, verify_password
+from app.security import (
+    hash_password,
+    hash_session_token,
+    new_session_token,
+    verify_password,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -42,13 +49,25 @@ def login(payload: LoginRequest) -> TokenResponse:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     if not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
+
     settings = get_settings()
-    token = create_access_token(str(user["id"]), user["email"])
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        expires_in=settings.jwt_expiry_minutes * 60,
+    raw_token = new_session_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.session_expiry_minutes
     )
+    db.create_session(
+        hash_session_token(raw_token), str(user["id"]), expires_at.isoformat()
+    )
+    return TokenResponse(
+        access_token=raw_token,
+        token_type="bearer",
+        expires_in=settings.session_expiry_minutes * 60,
+    )
+
+
+@router.post("/logout", status_code=204)
+def logout(token: str = Depends(oauth2_scheme)) -> None:
+    db.delete_session(hash_session_token(token))
 
 
 @router.get("/me", response_model=UserResponse)

@@ -1,5 +1,5 @@
 """Authenticated document routes (Phase 5): upload, list, usage, download,
-rename, delete. Ownership always derives from the verified JWT user."""
+rename, delete. Ownership always derives from the authenticated session user."""
 
 from __future__ import annotations
 

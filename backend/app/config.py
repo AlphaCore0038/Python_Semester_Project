@@ -20,7 +20,6 @@ ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 _PLACEHOLDERS = {
     "SUPABASE_URL": "https://your-project-ref.supabase.co",
     "SUPABASE_SERVICE_ROLE_KEY": "your-service-role-key",
-    "JWT_SECRET": "your-long-random-jwt-signing-secret",
     "ADMIN_EMAIL": "admin@example.com",
     "OPENROUTER_API_KEY": "your-openrouter-api-key",
 }
@@ -32,10 +31,9 @@ class Settings(BaseSettings):
     # Required (no defaults): missing/empty -> clear startup error.
     supabase_url: str
     supabase_service_role_key: str = Field(min_length=1)
-    jwt_secret: str = Field(min_length=1)
 
     # Optional with defaults (per .env.example).
-    jwt_expiry_minutes: int = 1440
+    session_expiry_minutes: int = 1440
     admin_email: str = ""
     openrouter_api_key: str = ""
     # MiniMax M3.1 Flash via OpenRouter's free route (verified 2026-10-19).
@@ -58,7 +56,6 @@ def _placeholder_fields(settings: Settings) -> list[str]:
     values = {
         "SUPABASE_URL": settings.supabase_url,
         "SUPABASE_SERVICE_ROLE_KEY": settings.supabase_service_role_key,
-        "JWT_SECRET": settings.jwt_secret,
         "ADMIN_EMAIL": settings.admin_email,
         "OPENROUTER_API_KEY": settings.openrouter_api_key,
     }

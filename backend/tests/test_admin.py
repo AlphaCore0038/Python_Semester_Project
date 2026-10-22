@@ -27,9 +27,9 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path):
     for name in (
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "JWT_SECRET",
         "ADMIN_EMAIL",
         "OPENROUTER_API_KEY",
+        "SESSION_EXPIRY_MINUTES",
         "MAX_UPLOAD_BYTES",
         "STORAGE_QUOTA_BYTES",
     ):
@@ -50,6 +50,9 @@ def world(env):
         ("get_user_by_email", users.get_user_by_email),
         ("create_user", users.create_user),
         ("get_user_by_id", users.get_user_by_id),
+        ("create_session", users.create_session),
+        ("get_session", users.get_session),
+        ("delete_session", users.delete_session),
         ("create_document", docs.create_document),
         ("get_document", docs.get_document),
         ("list_documents", docs.list_documents),
@@ -116,7 +119,7 @@ def test_admin_status_is_read_from_database_on_every_request(
 
     assert client.get("/admin/users", headers=headers).status_code == 200
 
-    admin["is_admin"] = False  # demotion applies immediately to the same JWT
+    admin["is_admin"] = False  # demotion applies immediately to the same session
     assert client.get("/admin/users", headers=headers).status_code == 403
 
     admin["is_admin"] = True

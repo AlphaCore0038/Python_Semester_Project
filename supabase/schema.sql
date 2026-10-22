@@ -22,8 +22,8 @@
 --     integration; our users are application users, so auth.uid() is not used.
 --   - The FastAPI backend connects with the server-side service-role key
 --     (which bypasses RLS) and MUST authorize every request in application
---     code: authenticate the JWT, scope every query by the token's user id,
---     and gate administrator routes on users.is_admin.
+--     code: validate the opaque session token, scope every query by that
+--     session's user id, and gate administrator routes on users.is_admin.
 --   - Privileged credentials never appear in this file or in any client config.
 -- ============================================================================
 
@@ -47,6 +47,23 @@ create table if not exists public.users (
 -- Case-insensitive uniqueness: Alice@Example.com and alice@example.com collide.
 create unique index if not exists users_email_lower_key
     on public.users (lower(email));
+
+-- ---------------------------------------------------------------------------
+-- auth_sessions
+--   One row per active login. Only the SHA-256 hash of the opaque session
+--   token is stored, never the raw token. Expiry is checked by FastAPI on
+--   every request; logout deletes the row.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.auth_sessions (
+    token_hash text primary key,
+    user_id    uuid not null references public.users (id) on delete cascade,
+    expires_at timestamptz not null,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists auth_sessions_user_id_idx
+    on public.auth_sessions (user_id);
 
 -- ---------------------------------------------------------------------------
 -- documents
@@ -120,4 +137,5 @@ $$;
 -- ---------------------------------------------------------------------------
 
 alter table public.users enable row level security;
+alter table public.auth_sessions enable row level security;
 alter table public.documents enable row level security;

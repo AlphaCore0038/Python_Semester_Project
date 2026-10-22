@@ -58,6 +58,50 @@ def get_user_by_id(user_id: str) -> dict | None:
     return response.data[0] if response.data else None
 
 
+# --- sessions (opaque tokens, Phase 10) ---
+
+_SESSION_COLUMNS = "token_hash, user_id, expires_at"
+
+
+def create_session(token_hash: str, user_id: str, expires_at: str) -> dict:
+    response = (
+        get_supabase()
+        .table("auth_sessions")
+        .insert(
+            {
+                "token_hash": token_hash,
+                "user_id": user_id,
+                "expires_at": expires_at,
+            }
+        )
+        .execute()
+    )
+    return response.data[0]
+
+
+def get_session(token_hash: str) -> dict | None:
+    response = (
+        get_supabase()
+        .table("auth_sessions")
+        .select(_SESSION_COLUMNS)
+        .eq("token_hash", token_hash)
+        .limit(1)
+        .execute()
+    )
+    return response.data[0] if response.data else None
+
+
+def delete_session(token_hash: str) -> bool:
+    response = (
+        get_supabase()
+        .table("auth_sessions")
+        .delete()
+        .eq("token_hash", token_hash)
+        .execute()
+    )
+    return bool(response.data)
+
+
 def set_user_admin(user_id: str) -> bool:
     """Promote exactly one existing user row; owner-run bootstrap only."""
     response = (

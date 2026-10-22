@@ -9,7 +9,6 @@ from app.main import app
 VALID_ENV = {
     "SUPABASE_URL": "https://example-project.supabase.co",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
-    "JWT_SECRET": "test-jwt-secret",
 }
 
 
@@ -26,9 +25,9 @@ def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path):
     for name in (
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "JWT_SECRET",
         "ADMIN_EMAIL",
         "OPENROUTER_API_KEY",
+        "SESSION_EXPIRY_MINUTES",
     ):
         monkeypatch.delenv(name, raising=False)
     _clear_cached_settings()
@@ -41,8 +40,16 @@ def test_load_settings_with_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(name, value)
     settings = config.load_settings()
     assert settings.supabase_url == VALID_ENV["SUPABASE_URL"]
+    assert settings.session_expiry_minutes == 1440
     assert settings.storage_quota_bytes == 524_288_000  # 500 MB unchanged
     assert settings.max_upload_bytes == 52_428_800  # 50 MB Supabase Free limit
+
+
+def test_session_expiry_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name, value in VALID_ENV.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("SESSION_EXPIRY_MINUTES", "60")
+    assert config.load_settings().session_expiry_minutes == 60
 
 
 def test_missing_required_settings_raise_clear_error(
@@ -52,7 +59,7 @@ def test_missing_required_settings_raise_clear_error(
         config.load_settings()
     message = str(excinfo.value)
     assert "SUPABASE_URL" in message
-    assert "JWT_SECRET" in message
+    assert "SUPABASE_SERVICE_ROLE_KEY" in message
     # Secret-safe: no value-looking content from the environment is echoed.
     assert "test-service-role-key" not in message
 

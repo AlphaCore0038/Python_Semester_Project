@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import config, db, storage
 from app.main import app
-from app.security import create_access_token, hash_password
+from app.security import hash_password, hash_session_token
 from tests.test_auth import VALID_ENV, FakeUserStore
 
 
@@ -98,9 +99,9 @@ def env(monkeypatch: pytest.MonkeyPatch):
     for name in (
         "SUPABASE_URL",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "JWT_SECRET",
         "ADMIN_EMAIL",
         "OPENROUTER_API_KEY",
+        "SESSION_EXPIRY_MINUTES",
         "MAX_UPLOAD_BYTES",
         "STORAGE_QUOTA_BYTES",
     ):
@@ -121,6 +122,9 @@ def world(env):
         ("get_user_by_email", users.get_user_by_email),
         ("create_user", users.create_user),
         ("get_user_by_id", users.get_user_by_id),
+        ("create_session", users.create_session),
+        ("get_session", users.get_session),
+        ("delete_session", users.delete_session),
         ("create_document", docs.create_document),
         ("get_document", docs.get_document),
         ("list_documents", docs.list_documents),
@@ -144,8 +148,13 @@ def make_user(users: FakeUserStore, email: str) -> dict:
     return users.create_user(email, hash_password("correct-horse-1"))
 
 
-def token_for(user: dict) -> dict[str, str]:
-    return {"Authorization": f"Bearer {create_access_token(user['id'], user['email'])}"}
+def token_for(user: dict, ttl_seconds: int = 3600) -> dict[str, str]:
+    token = f"test-session-{uuid.uuid4()}"
+    expires_at = (
+        datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    ).isoformat()
+    db.create_session(hash_session_token(token), user["id"], expires_at)
+    return {"Authorization": f"Bearer {token}"}
 
 
 def upload(
