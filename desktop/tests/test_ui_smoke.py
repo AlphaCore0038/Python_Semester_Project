@@ -1,5 +1,6 @@
 """UI construction smoke tests - widgets only, no network, no mainloop."""
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -11,7 +12,7 @@ try:
 except Exception:  # pragma: no cover - headless environments
     pytest.skip("No display available for Tkinter tests", allow_module_level=True)
 
-from app.api_client import ApiClient  # noqa: E402
+from app.api_client import ApiClient, ApiError  # noqa: E402
 from app.session import Session, SessionStore  # noqa: E402
 from app.tasks import TaskRunner  # noqa: E402
 from app.views import AIDialog, LoginView, MainView, format_size, format_timestamp  # noqa: E402
@@ -47,6 +48,25 @@ def test_main_view_constructs(root, runner, tmp_path):
     root.update()
     assert view.tree.winfo_exists()
     view.destroy()
+
+
+def test_logout_revokes_remotely_and_always_clears_locally():
+    calls = []
+
+    class FailingClient:
+        def logout(self, token):
+            calls.append(token)
+            raise ApiError(0, "backend unreachable")
+
+    logged_out = []
+    view = SimpleNamespace(
+        client=FailingClient(),
+        session=Session("token", "ana@example.com", time.time() + 3600),
+        on_logged_out=lambda message=None: logged_out.append(message),
+    )
+    MainView._logout(view)
+    assert calls == ["token"]
+    assert logged_out == [None]
 
 
 def test_format_helpers():

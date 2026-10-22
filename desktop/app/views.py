@@ -3,8 +3,8 @@
 Views own widgets and user-facing messages only; HTTP lives in
 api_client, sessions in session, offline paths in offline, and threading
 in tasks. Every widget update here runs on the Tk main thread (delivered
-by TaskRunner's pump). Raw exceptions, JWTs, and internal details are
-never displayed.
+by TaskRunner's pump). Raw exceptions, session tokens, and internal details
+are never displayed.
 """
 from __future__ import annotations
 
@@ -267,6 +267,10 @@ class MainView(tk.Frame):
         self.refresh()
 
     def _logout(self):
+        try:
+            self.client.logout(self.session.access_token)
+        except ApiError:
+            pass
         self.on_logged_out()
 
     def _handle_error(self, exc: Exception):

@@ -2,7 +2,7 @@
 
 The backend is the sole source of truth for authentication, authorization,
 cloud metadata, and quotas. This module never contacts Supabase directly
-and never builds public Storage URLs. The JWT travels only in the
+and never builds public Storage URLs. The session token travels only in the
 Authorization header -- never in URLs, logs, or printed output.
 """
 from __future__ import annotations
@@ -114,6 +114,10 @@ class ApiClient:
 
     def me(self, token: str) -> dict:
         return self._handle("GET", "/auth/me", token=token).json()
+
+    def logout(self, token: str) -> None:
+        """Best effort: a slow or unreachable backend must not block logout."""
+        self._handle("POST", "/auth/logout", token=token, timeout=(2.0, 2.0))
 
     # --- documents ------------------------------------------------------
 

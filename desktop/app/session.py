@@ -1,7 +1,7 @@
 """Persistent local login session for the desktop client.
 
-The FastAPI JWT is stored at %APPDATA%\\AiDigitalLocker\\session.json so the
-app can reopen straight to the dashboard. SECURITY NOTES (documented,
+The FastAPI session token is stored at %APPDATA%\\AiDigitalLocker\\session.json
+so the app can reopen straight to the dashboard. SECURITY NOTES (documented,
 intentional for this phase):
 - The token is stored in PLAINTEXT and is readable by the same Windows
   user account. DPAPI encryption is a possible future hardening, not here.

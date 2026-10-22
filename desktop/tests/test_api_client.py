@@ -53,6 +53,22 @@ def test_login_returns_token_payload_and_401_maps_to_apierror():
     assert excinfo.value.detail == "Incorrect email or password"
 
 
+def test_logout_posts_bearer_and_does_not_put_token_in_url():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["method"] = request.method
+        seen["url"] = str(request.url)
+        seen["auth"] = request.headers.get("authorization")
+        return httpx.Response(204)
+
+    make_client(handler).logout(TOKEN)
+    assert seen["method"] == "POST"
+    assert seen["url"].endswith("/auth/logout")
+    assert TOKEN not in seen["url"]
+    assert seen["auth"] == f"Bearer {TOKEN}"
+
+
 def test_list_documents_forwards_params_and_bearer_header_not_url():
     seen = {}
 
@@ -70,7 +86,7 @@ def test_list_documents_forwards_params_and_bearer_header_not_url():
         "file_type": "application/pdf",
     }
     assert seen["auth"] == f"Bearer {TOKEN}"
-    assert TOKEN not in seen["url"]  # JWT never in a URL
+    assert TOKEN not in seen["url"]  # token never in a URL
 
 
 def test_usage_and_me_and_rename_and_delete():
@@ -212,7 +228,7 @@ def test_ai_status_ask_summarize_suggest_paths_and_bearer():
     assert any(p.endswith("/ai/ask") for p in paths)
     assert any(p.endswith("/ai/summarize") for p in paths)
     assert any(p.endswith("/ai/suggest-filename") for p in paths)
-    # Bearer only in header, never URL; JWT never logged.
+    # Bearer only in header, never URL; token never logged.
     for (_m, url, auth, body) in seen:
         assert TOKEN not in url
         assert auth == f"Bearer {TOKEN}"
