@@ -119,11 +119,13 @@ venv (see the Phase 6 and Phase 7 sections below).
 ## Authentication (Phase 4)
 
 FastAPI-managed email/password auth against the `public.users` table
-(no Supabase Auth). Passwords are bcrypt-hashed. Login creates a random opaque
-session token; only its SHA-256 hash is stored in `public.auth_sessions`. The
-raw token is returned in the login response and sent back as a Bearer token.
-Sessions expire after `SESSION_EXPIRY_MINUTES` (default 24 h), and logout
-deletes the row to revoke the session immediately.
+(no Supabase Auth). Passwords are hashed with PBKDF2-HMAC-SHA256
+(`hashlib.pbkdf2_hmac`, 600,000 iterations, a 16-byte random salt, and a
+32-byte derived key). Login creates a random opaque session token; only its
+SHA-256 hash is stored in `public.auth_sessions`. The raw token is returned in
+the login response and sent back as a Bearer token. Sessions expire after
+`SESSION_EXPIRY_MINUTES` (default 24 h), and logout deletes the row to revoke
+the session immediately.
 
 ```bat
 :: With the server running (uvicorn app.main:app --reload):
@@ -157,12 +159,31 @@ after deploying this schema and backend version. No cleanup job is required;
 expired rows are
 ignored by the backend and can be deleted manually if desired.
 
+**Password hash migration.** Existing accounts still have legacy bcrypt
+hashes (`$2a$`/`$2b$`/`$2y$`). They remain valid while the `bcrypt` package is
+present. After a successful login, the backend transparently replaces that
+user's stored hash with a PBKDF2 hash; the password itself is unchanged and no
+reset is required. New registrations use PBKDF2 immediately. The existing user
+id, `is_admin` flag, and documents are untouched. There is no database schema
+change. To check whether any legacy hashes remain:
+
+```sql
+select count(*) as legacy_hashes
+from public.users
+where password_hash like '$2%';
+```
+
+Keep the bcrypt fallback and dependency until this count is zero. Accounts that
+never log in remain legacy; do not remove the fallback until they have either
+logged in or been explicitly reset by the owner.
+
 Rules enforced by the API: emails are normalized to lowercase (duplicate
-registration is case-insensitive); passwords must be 8–72 UTF-8 bytes (never
-truncated); `is_admin` cannot be set through registration; login returns one
-generic error for wrong password or unknown email; the authenticated user id
-comes only from the active session row. Tests use an in-memory fake store - no
-real Supabase project or `.env` is needed for `py -m pytest`.
+registration is case-insensitive); passwords must be 8-72 UTF-8 bytes (never
+truncated; the 72-byte cap is retained as a project policy); `is_admin` cannot
+be set through registration; login returns one generic error for wrong password
+or unknown email; the authenticated user id comes only from the active session
+row. Tests use an in-memory fake store - no real Supabase project or `.env` is
+needed for `py -m pytest`.
 
 **Single administrator (manual bootstrap):** `ADMIN_EMAIL` in `backend/.env`
 identifies the one account eligible for explicit promotion. Register that
@@ -446,7 +467,7 @@ credentials, or reporting endpoints exist.
   password was not available to the verification harness; the login page itself
   renders), and a live registration attempt supplying `is_admin=true` (mocked
   test only, to avoid creating a disposable account).
-- **Automated tests (auth migration):** backend 131, web 52, desktop 39 — all passing and
+- **Automated tests (auth migration):** backend 134, web 52, desktop 39 — all passing and
   all external services mocked. They do not prove live behavior.
 
 ## License / scope

@@ -5,12 +5,18 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 
 from app import config, db
 from app.main import app
-from app.security import hash_password, hash_session_token
+from app.security import (
+    hash_password,
+    hash_session_token,
+    needs_rehash,
+    verify_password,
+)
 
 VALID_ENV = {
     "SUPABASE_URL": "https://example-project.supabase.co",
@@ -47,6 +53,13 @@ class FakeUserStore:
                 return user
         return None
 
+    def update_password_hash(self, user_id: str, password_hash: str) -> bool:
+        for user in self.users.values():
+            if user["id"] == user_id:
+                user["password_hash"] = password_hash
+                return True
+        return False
+
     def create_session(self, token_hash: str, user_id: str, expires_at: str) -> dict:
         row = {
             "token_hash": token_hash,
@@ -82,6 +95,7 @@ def store(monkeypatch: pytest.MonkeyPatch) -> FakeUserStore:
         ("create_user", fake.create_user),
         ("get_user_by_email", fake.get_user_by_email),
         ("get_user_by_id", fake.get_user_by_id),
+        ("update_password_hash", fake.update_password_hash),
         ("create_session", fake.create_session),
         ("get_session", fake.get_session),
         ("delete_session", fake.delete_session),
@@ -169,9 +183,25 @@ def test_register_accepts_unicode_password_within_72_bytes(
     assert response.status_code == 201
     # verify the stored hash validates the exact unicode password
     user = store.get_user_by_email("uni@example.com")
-    from app.security import verify_password
-
     assert verify_password("pässwörd✓-1", user["password_hash"])
+
+
+def test_password_hashes_use_pbkdf2_with_per_password_salt() -> None:
+    password = "correct-horse-1"
+    first = hash_password(password)
+    second = hash_password(password)
+
+    assert first.startswith("pbkdf2_sha256$600000$")
+    assert first != second
+    assert password not in first
+    assert verify_password(password, first)
+    assert not verify_password("wrong-password-9", first)
+    assert not needs_rehash(first)
+
+
+def test_invalid_password_hashes_are_rejected() -> None:
+    for encoded in ("", "garbage", "pbkdf2_sha256$600000$zz$zz", "$2b$bad"):
+        assert not verify_password("correct-horse-1", encoded)
 
 
 def test_register_ignores_is_admin_input(client: TestClient, store: FakeUserStore) -> None:
@@ -223,6 +253,32 @@ def test_login_wrong_password_and_unknown_email_share_error(
     unknown = login(client, "ghost@example.com", "wrong-password-9")
     assert wrong.status_code == unknown.status_code == 401
     assert wrong.json() == unknown.json() == {"detail": "Incorrect email or password"}
+
+
+def test_legacy_bcrypt_login_rehashes_in_place(
+    client: TestClient, store: FakeUserStore
+) -> None:
+    legacy_hash = bcrypt.hashpw(
+        b"correct-horse-1", bcrypt.gensalt()
+    ).decode("utf-8")
+    user = store.create_user("legacy@example.com", legacy_hash)
+    user["is_admin"] = True
+    user_id = user["id"]
+
+    wrong = login(client, "legacy@example.com", "wrong-password-9")
+    assert wrong.status_code == 401
+    assert store.get_user_by_email("legacy@example.com")["password_hash"] == legacy_hash
+
+    response = login(client, "legacy@example.com", "correct-horse-1")
+    assert response.status_code == 200
+    upgraded = store.get_user_by_email("legacy@example.com")["password_hash"]
+    assert upgraded.startswith("pbkdf2_sha256$600000$")
+    assert upgraded != legacy_hash
+    assert verify_password("correct-horse-1", upgraded)
+    assert not needs_rehash(upgraded)
+    assert user["id"] == user_id
+    assert user["is_admin"] is True
+    assert login(client, "legacy@example.com", "correct-horse-1").status_code == 200
 
 
 # --- protected endpoint ---

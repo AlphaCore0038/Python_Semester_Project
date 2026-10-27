@@ -13,6 +13,7 @@ from app.schemas import LoginRequest, RegisterRequest, RegisterResponse, TokenRe
 from app.security import (
     hash_password,
     hash_session_token,
+    needs_rehash,
     new_session_token,
     verify_password,
 )
@@ -49,6 +50,8 @@ def login(payload: LoginRequest) -> TokenResponse:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     if not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
+    if needs_rehash(user["password_hash"]):
+        db.update_password_hash(str(user["id"]), hash_password(payload.password))
 
     settings = get_settings()
     raw_token = new_session_token()

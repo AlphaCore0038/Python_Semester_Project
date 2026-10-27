@@ -6,7 +6,7 @@ import re
 
 from pydantic import BaseModel, field_validator
 
-from app.security import BCRYPT_MAX_BYTES
+from app.security import MAX_PASSWORD_BYTES
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _CONTENT_TYPE_RE = re.compile(r"^[\w.+-]+/[\w.+-]+$")
@@ -23,9 +23,9 @@ def _validate_password(value: str) -> str:
     if len(value) < 8:
         raise ValueError("Password must be at least 8 characters")
     size = len(value.encode("utf-8"))
-    if size > BCRYPT_MAX_BYTES:
+    if size > MAX_PASSWORD_BYTES:
         raise ValueError(
-            f"Password must be at most {BCRYPT_MAX_BYTES} bytes when encoded as UTF-8"
+            f"Password must be at most {MAX_PASSWORD_BYTES} bytes when encoded as UTF-8"
         )
     return value
 

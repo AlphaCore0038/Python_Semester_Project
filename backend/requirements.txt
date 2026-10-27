@@ -5,6 +5,7 @@ fastapi>=0.146.0
 uvicorn[standard]>=0.46.0
 supabase>=2.33.0
 pydantic-settings>=2.10.0
+# Temporary: verifies legacy password hashes during the PBKDF2 migration.
 bcrypt>=5.0.0
 python-multipart>=0.0.20
 httpx>=0.28.0

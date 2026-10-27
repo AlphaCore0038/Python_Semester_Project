@@ -58,6 +58,17 @@ def get_user_by_id(user_id: str) -> dict | None:
     return response.data[0] if response.data else None
 
 
+def update_password_hash(user_id: str, password_hash: str) -> bool:
+    response = (
+        get_supabase()
+        .table("users")
+        .update({"password_hash": password_hash})
+        .eq("id", user_id)
+        .execute()
+    )
+    return bool(response.data)
+
+
 # --- sessions (opaque tokens, Phase 10) ---
 
 _SESSION_COLUMNS = "token_hash, user_id, expires_at"
