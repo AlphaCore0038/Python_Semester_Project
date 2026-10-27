@@ -69,7 +69,7 @@ def update_password_hash(user_id: str, password_hash: str) -> bool:
     return bool(response.data)
 
 
-# --- sessions (opaque tokens, Phase 10) ---
+# --- sessions (opaque database-backed tokens) ---
 
 _SESSION_COLUMNS = "token_hash, user_id, expires_at"
 

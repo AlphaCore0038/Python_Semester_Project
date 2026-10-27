@@ -33,7 +33,8 @@ Django Web App (web/)          Tkinter Desktop App (desktop/)
 - **web/** — Django client (browser UI). Talks to FastAPI over HTTP.
 - **desktop/** — Tkinter Windows client (`py locker.py`). Talks to FastAPI over
   HTTP; may keep optional local offline copies of documents (this device only).
-- **supabase/** — database schema script (`schema.sql`, applied in Phase 2).
+- **supabase/** — current database schema (`schema.sql`: users, sessions,
+  documents, RLS); apply it in the Supabase SQL Editor.
 
 Key product rules (from the specification): 500 MB cloud storage per user, flat document
 collection (no folders), duplicate filenames allowed, single administrator, no document
@@ -43,9 +44,9 @@ sharing, Local AI must never be presented as working.
 
 ```
 backend/          FastAPI backend (requirements.txt, .env.example)
-web/              Django web client (requirements.txt)
+web/              Django web client (requirements.txt, .env.example)
 desktop/          Tkinter desktop client (requirements.txt)
-supabase/         Schema scripts (Phase 2)
+supabase/         Current database schema (schema.sql)
 .env.example      Root template: non-secret client config (FASTAPI_BASE_URL)
 ```
 
@@ -74,20 +75,33 @@ or Tkinter clients and are never committed to Git.
 | 7 | Tkinter desktop client | **Complete** |
 | 8 | AI assistant (OpenRouter) | **Complete** |
 | 9 | Admin access (manual bootstrap, read-only API, web dashboard; Google Sheets deferred) | **Complete** |
-| 10 | Demo polish | Not started |
+| 10 | Demo polish (setup/docs, runbook, smoke checks) | **Complete** |
 
-Phases 1–9 are implemented and committed. Phase 9 provides a single,
+Phases 1–10 are implemented and committed. Phase 9 provides a single,
 manually bootstrapped administrator with read-only FastAPI endpoints, a web-only
-dashboard at `/admin/`, and audited cross-user downloads. Google Sheets remains
-deferred by the owner's decision, and the desktop client has no admin UI. The
-specification's §32 open-decision list is preserved as written; this README does
-not treat those entries as newly settled. Target Python version: **3.14**
-(Django 6.1 and current FastAPI both support it; backend dependencies install and
-pass tests on 3.14).
+dashboard at `/admin/`, and audited cross-user downloads. Phase 10 adds no new
+product features: it fixes the Windows setup flow (Django database migration and
+a non-conflicting web port), documents the opaque-session/PBKDF2 implementation,
+and adds the repeatable demo runbook below. Google Sheets remains deferred by the
+owner's decision, and the desktop client has no admin UI. The specification's §32
+open-decision list is preserved as written; this README does not treat those
+entries as newly settled. Target Python version: **3.14** (verified locally on
+3.14.6; Django 6.1 and current FastAPI both support it).
 
 ## Setup — backend (Windows, Python 3.14 via the `py` launcher)
 
-Prerequisites: Python 3.14 installed (the Windows `py` launcher must work).
+Prerequisites: Python 3.14 installed (the Windows `py` launcher must work) and a
+Supabase project prepared once:
+
+1. In the Supabase SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql)
+   (users, `auth_sessions`, documents, and RLS).
+2. In Storage, create a **private** bucket named `documents`. The backend uses
+   the service-role key; no public bucket policy is needed.
+3. In Project Settings -> API, copy the project URL and `service_role` key into
+   `backend/.env` (never into a client or Git).
+
+The existing demo project already has these. A fresh Supabase project needs all
+three steps before the API can authenticate or store files.
 
 ```bat
 :: 1. Virtual environment
@@ -156,8 +170,15 @@ alter table public.auth_sessions enable row level security;
 There is no data migration: tokens issued by the previous signed-token
 implementation are not valid session rows, so every user logs in again once
 after deploying this schema and backend version. No cleanup job is required;
-expired rows are
-ignored by the backend and can be deleted manually if desired.
+expired rows are ignored by the backend and can be deleted manually if desired.
+
+**Live deployment status (2026-10-27).** The owner's live Supabase project has
+the `auth_sessions` table, RLS, and service-role permissions applied; an
+owner-confirmed admin API login returned HTTP 200. Phase 10's local live smoke
+checks confirmed the backend can read the session table (invalid bearer ->
+401), run the logout delete path (bogus token -> 204), and read users for an
+unknown-email login (401). The Phase 10 harness did not perform a valid-password
+login. A new Supabase project still needs the SQL above applied first.
 
 **Password hash migration.** Existing accounts still have legacy bcrypt
 hashes (`$2a$`/`$2b$`/`$2y$`). They remain valid while the `bcrypt` package is
@@ -176,6 +197,12 @@ where password_hash like '$2%';
 Keep the bcrypt fallback and dependency until this count is zero. Accounts that
 never log in remain legacy; do not remove the fallback until they have either
 logged in or been explicitly reset by the owner.
+
+**Phase 10 live check (2026-10-27).** A read-only query against the live
+`public.users` table found **3 legacy bcrypt hashes**. No user records or
+password hashes were changed. Re-run the query above after demo logins; bcrypt
+must remain installed while the count is nonzero, and Stage 2 still requires
+explicit owner approval.
 
 Rules enforced by the API: emails are normalized to lowercase (duplicate
 registration is case-insensitive); passwords must be 8-72 UTF-8 bytes (never
@@ -255,12 +282,15 @@ notepad .env
 ::   py -c "import secrets; print(secrets.token_urlsafe(64))"
 :: FASTAPI_BASE_URL is inherited from the repo-root .env if present.
 
-:: 3. Tests (all FastAPI calls are mocked; backend must NOT be running for clarity)
+:: 3. Create/upgrade Django's local session database (required on a fresh clone)
+py manage.py migrate
+
+:: 4. Tests (all FastAPI calls are mocked; backend must NOT be running for clarity)
 py manage.py test
 
-:: 4. Run (with the FastAPI backend already running on :8000)
-py manage.py runserver
-:: Open http://127.0.0.1:8000/  ->  register, upload, search, sort, download
+:: 5. Run on 8001 so it does not collide with FastAPI on 8000
+py manage.py runserver 8001
+:: Open http://127.0.0.1:8001/  ->  register, upload, search, sort, download
 ```
 
 What works: registration with automatic login, login, POST-only logout,
@@ -467,8 +497,84 @@ credentials, or reporting endpoints exist.
   password was not available to the verification harness; the login page itself
   renders), and a live registration attempt supplying `is_admin=true` (mocked
   test only, to avoid creating a disposable account).
-- **Automated tests (auth migration):** backend 134, web 52, desktop 39 — all passing and
+- **Automated tests (Phase 10):** backend 134, web 52, desktop 39 — all passing and
   all external services mocked. They do not prove live behavior.
+
+## Demo runbook (Phase 10)
+
+Use the setup sections above first. A fresh web checkout **must** run
+`py manage.py migrate` before the first `runserver`; that creates Django's
+server-side session table. Keep FastAPI on port 8000 and Django on port 8001 so
+the two local servers do not collide.
+
+### Start the three components
+
+```bat
+:: Terminal 1 - FastAPI backend
+cd backend
+.venv\Scripts\activate
+uvicorn app.main:app --reload
+:: health: http://127.0.0.1:8000/health
+
+:: Terminal 2 - Django web client
+cd web
+.venv\Scripts\activate
+py manage.py migrate
+py manage.py runserver 8001
+:: open: http://127.0.0.1:8001/
+
+:: Terminal 3 - Tkinter desktop client
+cd desktop
+.venv\Scripts\activate
+py locker.py
+```
+
+### Demonstration checklist
+
+Use synthetic/sample documents, not real personal records. Cloud AI sends the
+selected document text to OpenRouter; Local AI is only a disabled placeholder.
+
+- [ ] Register a demo account and confirm the dashboard shows `0 B / 500 MB`.
+- [ ] Upload a small TXT, PDF, or DOCX file. Upload a second file with the same
+      visible name; both must remain separate documents (spec §8).
+- [ ] Search by filename, sort by name/size/date, and filter by MIME type.
+- [ ] Rename one document, download it, delete one duplicate, and confirm the
+      usage bar/count changes.
+- [ ] Open the AI assistant, ask a question about an uploaded text-extractable
+      document, summarize it, and request a filename suggestion. Apply the
+      suggested name only through the explicit confirmation/rename flow. If the
+      free OpenRouter route is unavailable, show the clear 503 message and that
+      the locker still works without AI.
+- [ ] In the desktop client, log in as the same user, upload with **Keep Offline
+      Copy**, download, rename, delete, and open the AI dialog. Confirm Local AI
+      is visibly disabled and cannot claim to run locally.
+- [ ] Log out in both clients and log in again. Show that a wrong password gets
+      the same generic error as an unknown email.
+- [ ] Admin only: log in as the promoted account, open `/admin/`, verify the
+      read-only user/document lists, and download one document. The desktop
+      client intentionally has no admin UI.
+- [ ] Remove disposable demo documents from the account when finished.
+
+### Phase 10 verification (2026-10-27)
+
+- **Automated:** backend 134, web 52, desktop 39 passing; Django `check` and
+  `migrate --check` pass. All external services are mocked in these tests.
+- **Local live smoke checks (real backend `.env` and real Supabase):**
+  `/health` returned 200; invalid-token `/auth/me` returned 401; invalid-token
+  `/auth/logout` returned 204; unknown-email `/auth/login` returned 401;
+  invalid-token `/ai/status` returned 401. Django on port 8001 served
+  `/login/` and `/register/` with 200 and a CSRF token; `/` and `/admin/`
+  redirected unauthenticated visitors to login. This proves local wiring and
+  session-table access, not a successful credential flow.
+- **Owner-confirmed (not repeated by this harness):** a live admin API login
+  returned HTTP 200 after the `auth_sessions` rollout.
+- **Not re-run in Phase 10:** valid-password login from this harness, live
+  upload/download/Storage, live OpenRouter AI, browser interaction, or desktop
+  against the live backend. Earlier phases reported live AI/Storage checks;
+  those remain historical claims.
+- **Remaining auth-migration blocker:** the live users table had 3 legacy bcrypt
+  hashes at the Phase 10 check (read-only). Keep bcrypt until the count is zero
+  and the owner explicitly approves Stage 2.
 
 ## License / scope
 

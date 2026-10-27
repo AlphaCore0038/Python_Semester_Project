@@ -17,8 +17,8 @@
 --     it unchanged; schema changes after first run require a manual migration.
 --
 -- Security model:
---   - Both tables have Row Level Security enabled with NO policies for the
---     anon/authenticated roles => deny-by-default. There is no Supabase Auth
+--   - All application tables have Row Level Security enabled with NO policies
+--     for the anon/authenticated roles => deny-by-default. There is no Supabase Auth
 --     integration; our users are application users, so auth.uid() is not used.
 --   - The FastAPI backend connects with the server-side service-role key
 --     (which bypasses RLS) and MUST authorize every request in application
