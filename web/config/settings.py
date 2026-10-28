@@ -30,7 +30,15 @@ if not SECRET_KEY:
             "print(secrets.token_urlsafe(64))\""
         )
 
-DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
+
+def _env_bool(name, default):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes", "on")
+
+
+DEBUG = _env_bool("DEBUG", False)
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -47,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -84,9 +93,11 @@ DATABASES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-# Secure cookies require HTTPS; enabled automatically when DEBUG is off.
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# Secure cookies require HTTPS. They default to on outside DEBUG and can be
+# overridden explicitly for unusual local HTTP setups with DEBUG=False.
+COOKIE_SECURE = _env_bool("COOKIE_SECURE", not DEBUG)
+SESSION_COOKIE_SECURE = COOKIE_SECURE
+CSRF_COOKIE_SECURE = COOKIE_SECURE
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
@@ -96,7 +107,12 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [REPO_ROOT / "assets"]
+# WhiteNoise serves collected files in production and the finders in DEBUG.
+WHITENOISE_USE_FINDERS = DEBUG
+WHITENOISE_AUTOREFRESH = DEBUG
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # FastAPI backend location (non-secret; see .env.example).

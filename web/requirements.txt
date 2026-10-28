@@ -6,3 +6,4 @@
 Django>=6.1.0
 requests>=2.32.0
 python-dotenv>=1.0.0
+whitenoise>=6.12.0

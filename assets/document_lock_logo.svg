@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="634" height="710" viewBox="0 0 634 710" role="img" aria-labelledby="title desc">
+  <title id="title">Document and padlock logo</title>
+  <desc id="desc">A smooth white document merged with a padlock, with a central divider and split keyhole, on a black background.</desc>
+  <rect width="634" height="710" fill="#000"/>
+  <!-- Document silhouette, including the folded upper corner -->
+  <path fill="#fff" d="M316 0H236C219 0 205 7 192 20L10 202C3 209 0 217 0 228V667C0 691 19 710 43 710H316Z"/>
+  <!-- Dark page interior -->
+  <path fill="#000" d="M275 52V223C275 236 265 245 252 245H41V645C41 660 53 672 68 672H275V52Z"/>
+  <!-- Folded corner cutout -->
+  <path fill="#000" d="M183 98V212H69Z"/>
+  <!-- Fold edge / inner page spine -->
+  <path fill="#fff" d="M183 98H217V212C217 232 206 245 186 245H41V212H183Z"/>
+  <path fill="#000" d="M183 98V212H69Z"/>
+  <!-- Document text lines -->
+  <g fill="#fff">
+    <rect x="71" y="315" width="182" height="47" rx="23.5"/>
+    <rect x="71" y="404" width="182" height="45" rx="22.5"/>
+    <rect x="71" y="491" width="182" height="44" rx="22"/>
+    <rect x="71" y="577" width="182" height="45" rx="22.5"/>
+  </g>
+  <!-- Lock shackle and body as one smooth silhouette -->
+  <path fill="#fff" d="M332 0H386C476 0 549 73 549 164V276H562C602 276 634 309 634 349V660C634 688 612 710 584 710H332Z"/>
+  <!-- Inside of the shackle -->
+  <path fill="#000" d="M332 69H382C435 69 478 112 478 165V276H332Z"/>
+  <!-- Central seam between the two halves -->
+  <path fill="#000" d="M316 0H332V710H316Z"/>
+  <!-- Keyhole cutout; its left edge meets the central seam for the split-keyhole effect -->
+  <path fill="#000" d="M332 382C341 382 350 386 359 393C377 407 387 424 387 436C387 460 371 479 351 488L379 587C380 589 378 591 375 591H332Z"/>
+</svg>

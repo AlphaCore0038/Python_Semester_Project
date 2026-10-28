@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from app import db, storage
 from app.config import get_settings
 from app.deps import get_current_user
+from app.sheets import sheets
 from app.schemas import (
     DocumentResponse,
     RenameRequest,
@@ -124,6 +125,15 @@ async def upload_document(
         raise HTTPException(
             status_code=500, detail="Failed to save document metadata"
         ) from None
+
+    # Best-effort Sheets reporting: never fails a successful upload.
+    try:
+        report_row = db.get_document_report_row(str(created["id"]), user_id)
+        if report_row:
+            sheets.report_document(report_row, report_row.get("owner_email"))
+    except Exception:
+        logger.exception("Google Sheets reporting failed after upload")
+
     return _to_response(created)
 
 
@@ -195,6 +205,15 @@ def rename_document(
     )
     if updated is None:
         raise _not_found()
+    # Best-effort Sheets reporting: update the row in place by Document ID.
+    try:
+        report_row = db.get_document_report_row(
+            str(updated["id"]), str(current_user["id"])
+        )
+        if report_row:
+            sheets.report_document(report_row, report_row.get("owner_email"))
+    except Exception:
+        logger.exception("Google Sheets reporting failed after rename")
     # Metadata-only: the Storage object key {user_id}/{document_id} never changes.
     return _to_response(updated)
 
@@ -213,6 +232,11 @@ def delete_document(
         raise _not_found()
     if not db.delete_document(document_id, user_id):
         raise _not_found()
+    # Best-effort Sheets reporting: remove the registry row for the deleted doc.
+    try:
+        sheets.delete_document_row(str(row["id"]))
+    except Exception:
+        logger.exception("Google Sheets reporting failed after delete")
     # Best-effort object cleanup after the metadata row is gone (the row is
     # the quota source of truth). A failure can leave an orphaned Storage
     # object; logged without credentials or file contents.

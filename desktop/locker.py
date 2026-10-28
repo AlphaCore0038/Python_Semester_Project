@@ -9,24 +9,26 @@ ever reach this application.
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
 
-from app import config, offline
+from app import config, offline, theme
 from app.api_client import ApiClient
 from app.session import SessionStore
 from app.tasks import TaskRunner
 from app.views import LoginView, MainView
 
-
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
         root.title("AI Digital Locker")
-        root.minsize(760, 480)
+        root.configure(bg=theme.BG)
+        root.minsize(940, 560)
+        theme.apply_theme(root)
+        theme.apply_window_icon(root)
+        _center(root, *_window_size(root))
         self.client = ApiClient(config.base_url())
         self.store = SessionStore()
         self.runner = TaskRunner(root.after)
-        self.container = ttk.Frame(root)
+        self.container = tk.Frame(root, bg=theme.BG)
         self.container.pack(fill="both", expand=True)
         self._view = None
         root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -76,14 +78,21 @@ class App:
         self.root.destroy()
 
 
+def _window_size(root: tk.Tk) -> tuple[int, int]:
+    width = min(1180, max(940, int(root.winfo_screenwidth() * 0.86)))
+    height = min(760, max(560, int(root.winfo_screenheight() * 0.82)))
+    return width, height
+
+
+def _center(root: tk.Tk, width: int, height: int) -> None:
+    x = max(0, (root.winfo_screenwidth() - width) // 2)
+    y = max(0, (root.winfo_screenheight() - height) // 2)
+    root.geometry(f"{width}x{height}+{x}+{y}")
+
+
 def main():
     offline.offline_root().mkdir(parents=True, exist_ok=True)
     root = tk.Tk()
-    style = ttk.Style(root)
-    try:
-        style.theme_use("vista")
-    except tk.TclError:
-        pass
     App(root)
     root.mainloop()
 

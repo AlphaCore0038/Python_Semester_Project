@@ -187,6 +187,11 @@ def dashboard(request):
     docs = []
     try:
         usage = fastapi_client.usage(token)
+    except fastapi_client.FastAPIError as exc:
+        if exc.status_code == 401:
+            return _session_expired(request)
+
+    try:
         docs = _add_display_times(
             fastapi_client.list_documents(
                 token,
@@ -209,11 +214,21 @@ def dashboard(request):
                 else "Could not load your documents. Please try again.",
             )
 
+    usage_percent = 0
+    usage_remaining = None
+    if usage and usage.get("quota_bytes"):
+        used = usage.get("used_bytes", 0)
+        quota = usage["quota_bytes"]
+        usage_percent = min(100, round(used / quota * 100))
+        usage_remaining = max(0, quota - used)
+
     return render(
         request,
         "locker/dashboard.html",
         {
             "usage": usage,
+            "usage_percent": usage_percent,
+            "usage_remaining": usage_remaining,
             "documents": docs,
             "email": request.session.get("api_email", ""),
             "max_upload_bytes": settings.MAX_UPLOAD_BYTES,

@@ -1,100 +1,250 @@
 {% extends "locker/base.html" %}
-{% block title %}Dashboard - AI Digital Locker{% endblock %}
+{% block title %}Documents - AI Digital Locker{% endblock %}
+{% block eyebrow %}Workspace{% endblock %}
+{% block page_title %}Documents{% endblock %}
 {% block content %}
-<h2>Your documents</h2>
-
-<div class="card">
-  {% if usage %}
-    <strong>Storage:</strong>
-    {{ usage.used_bytes|filesizeformat }} used of {{ usage.quota_bytes|filesizeformat }}
-    ({{ usage.document_count }} file{{ usage.document_count|pluralize }})
-    <div class="usage-bar">
-      <span class="{% if usage.used_bytes >= usage.quota_bytes %}full{% endif %}"
-            style="width: {% widthratio usage.used_bytes usage.quota_bytes 100 %}%"></span>
-    </div>
-  {% else %}
-    <span class="muted">Usage unavailable right now.</span>
-  {% endif %}
+<div class="page-head">
+  <div>
+    <h2 class="page-title">Your library</h2>
+    <p class="page-sub">Everything in one secure place &mdash; search, preview, and manage your documents.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn primary" href="#upload">
+      <svg class="icon-sm" aria-hidden="true"><use href="#i-upload"/></svg>
+      Upload document
+    </a>
+  </div>
 </div>
 
-<div class="card">
-  <h3 style="margin-top:0">Upload</h3>
-  <form method="post" action="{% url 'locker:upload' %}" enctype="multipart/form-data" id="upload-form">
+{% if usage %}
+<section class="panel storage-card">
+  <div class="storage-copy">
+    <span class="eyebrow">Storage</span>
+    <div class="storage-figure">
+      <strong>{{ usage.used_bytes|filesizeformat }}</strong>
+      <span>of {{ usage.quota_bytes|filesizeformat }} used</span>
+    </div>
+    <div class="usage-bar" role="progressbar" aria-valuenow="{{ usage_percent }}" aria-valuemin="0" aria-valuemax="100">
+      <span class="{% if usage_percent >= 95 %}full{% endif %}" style="width: {{ usage_percent }}%;"></span>
+    </div>
+    <div class="usage-scale">
+      <span>{{ usage_percent }}% used</span>
+      <span>{% if usage_remaining is not None %}{{ usage_remaining|filesizeformat }} available{% endif %}</span>
+    </div>
+  </div>
+  <div class="storage-stats">
+    <div class="stat-tile">
+      <svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>
+      <div>
+        <strong>{{ usage.document_count }}</strong>
+        <span>Document{{ usage.document_count|pluralize }}</span>
+      </div>
+    </div>
+    <div class="stat-tile">
+      <svg class="icon" aria-hidden="true"><use href="#i-storage"/></svg>
+      <div>
+        <strong>{{ usage.quota_bytes|filesizeformat }}</strong>
+        <span>Total quota</span>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel upload-panel" id="upload">
+  <div class="panel-head">
+    <div>
+      <h3>Upload</h3>
+      <p>Add a file to your private locker.</p>
+    </div>
+  </div>
+  <form method="post" action="{% url 'locker:upload' %}" enctype="multipart/form-data" id="upload-form" class="upload-form">
     {% csrf_token %}
-    <input type="file" name="file" required>
-    <span class="muted">Maximum file size: 50 MiB</span>
-    <p><button type="submit">Upload</button></p>
-  </form>
-</div>
-
-<div class="card">
-  <h3 style="margin-top:0">Files</h3>
-  <form method="get" class="filters">
-    <div>
-      <label for="id_search">Search filename</label>
-      <input type="text" id="id_search" name="search" value="{{ query.search }}" placeholder="e.g. report">
+    <label class="dropzone" for="file-input" data-dropzone>
+      <span class="dropzone-icon">
+        <svg class="icon-lg" aria-hidden="true"><use href="#i-upload"/></svg>
+      </span>
+      <span class="dropzone-title">Drop a file here or <u>browse</u></span>
+      <span class="dropzone-hint">Up to 50 MiB per file</span>
+      <input id="file-input" type="file" name="file" required data-file-input>
+    </label>
+    <div class="upload-actions">
+      <span class="file-selected" data-file-name>No file selected</span>
+      <button class="btn primary" type="submit">
+        <svg class="icon-sm" aria-hidden="true"><use href="#i-upload"/></svg>
+        Upload
+      </button>
     </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head split">
     <div>
+      <h3>Files</h3>
+      <p>{{ documents|length }} document{{ documents|length|pluralize }} shown</p>
+    </div>
+  </div>
+
+  <form method="get" class="filter-bar">
+    <div class="filter-field">
+      <label for="id_search">Search filename</label>
+      <div class="input-wrap">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="text" id="id_search" name="search" value="{{ query.search }}" placeholder="e.g. report">
+      </div>
+    </div>
+    <div class="filter-field">
       <label for="id_sort">Sort by</label>
-      <select id="id_sort" name="sort">
-        <option value="" {% if not query.sort %}selected{% endif %}>Uploaded (default)</option>
+      <select id="id_sort" name="sort" data-autosubmit>
+        <option value="" {% if not query.sort %}selected{% endif %}>Uploaded</option>
         <option value="filename" {% if query.sort == "filename" %}selected{% endif %}>Name</option>
         <option value="file_size_bytes" {% if query.sort == "file_size_bytes" %}selected{% endif %}>Size</option>
         <option value="created_at" {% if query.sort == "created_at" %}selected{% endif %}>Date</option>
       </select>
     </div>
-    <div>
+    <div class="filter-field">
       <label for="id_order">Order</label>
-      <select id="id_order" name="order">
+      <select id="id_order" name="order" data-autosubmit>
         <option value="desc" {% if query.order == "desc" %}selected{% endif %}>Newest first</option>
         <option value="asc" {% if query.order == "asc" %}selected{% endif %}>Oldest first</option>
       </select>
     </div>
-    <div>
+    <div class="filter-field">
       <label for="id_file_type">Type (MIME)</label>
       <input type="text" id="id_file_type" name="file_type" value="{{ query.file_type }}" placeholder="application/pdf">
     </div>
-    <div><button type="submit">Apply</button></div>
+    <div class="filter-actions">
+      <button class="btn secondary" type="submit">Apply</button>
+      <a class="btn ghost" href="{% url 'locker:dashboard' %}">Reset</a>
+    </div>
   </form>
 
   {% if documents %}
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for doc in documents %}
-      <tr>
-        <td>{{ doc.filename }}</td>
-        <td class="muted">{{ doc.file_type }}</td>
-        <td>{{ doc.file_size_bytes|filesizeformat }}</td>
-        <td class="muted">{{ doc.created_at_display }}</td>
-        <td>
-          <div class="actions">
-            <a class="btn secondary" href="{% url 'locker:download' doc.id %}">Download</a>
-            <a class="btn" href="{% url 'locker:rename' doc.id %}?filename={{ doc.filename|urlencode }}">Rename</a>
-            <a class="btn danger" href="{% url 'locker:delete' doc.id %}">Delete</a>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-wrap">
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th scope="col">Document</th>
+            <th scope="col">Type</th>
+            <th scope="col">Size</th>
+            <th scope="col">Uploaded</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+            <tr>
+              <td>
+                <div class="doc-cell">
+                  <span class="file-chip {% if 'pdf' in doc.file_type %}pdf{% elif 'image' in doc.file_type %}image{% elif 'sheet' in doc.file_type or 'excel' in doc.file_type or 'csv' in doc.file_type %}sheet{% elif 'zip' in doc.file_type or 'compressed' in doc.file_type or 'tar' in doc.file_type %}archive{% endif %}">
+                    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>
+                  </span>
+                  <span>
+                    <span class="doc-name" title="{{ doc.filename }}">{{ doc.filename }}</span>
+                    <span class="doc-type">{{ doc.file_type|default:"Unknown type" }}</span>
+                  </span>
+                </div>
+              </td>
+              <td class="cell-muted type-cell" title="{{ doc.file_type }}">{{ doc.file_type }}</td>
+              <td class="cell-muted">{{ doc.file_size_bytes|filesizeformat }}</td>
+              <td class="cell-muted">{{ doc.created_at_display }}</td>
+              <td>
+                <div class="row-actions">
+                  <a class="icon-btn" href="{% url 'locker:download' doc.id %}" title="Download" aria-label="Download {{ doc.filename }}">
+                    <svg class="icon-sm" aria-hidden="true"><use href="#i-download"/></svg>
+                  </a>
+                  <a class="icon-btn" href="{% url 'locker:rename' doc.id %}?filename={{ doc.filename|urlencode }}" title="Rename" aria-label="Rename {{ doc.filename }}">
+                    <svg class="icon-sm" aria-hidden="true"><use href="#i-pencil"/></svg>
+                  </a>
+                  <a class="icon-btn danger" href="{% url 'locker:delete' doc.id %}" title="Delete" aria-label="Delete {{ doc.filename }}">
+                    <svg class="icon-sm" aria-hidden="true"><use href="#i-trash"/></svg>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
-    <p class="muted">No documents yet. Upload one above.</p>
+    <div class="empty">
+      <span class="empty-icon">
+        <svg class="icon-lg" aria-hidden="true"><use href="#i-doc"/></svg>
+      </span>
+      <h3>No documents yet</h3>
+      <p>Upload your first file and it will appear here.</p>
+      <a class="btn primary" href="#upload">Upload document</a>
+    </div>
   {% endif %}
-</div>
+</section>
 
 <script>
-  // UI-only convenience check; the backend enforces the real 50 MiB limit.
-  document.getElementById("upload-form").addEventListener("submit", function (e) {
-    var f = this.file.files[0];
-    if (f && f.size > 50 * 1024 * 1024) {
-      e.preventDefault();
-      alert("That file is larger than the 50 MiB limit.");
+  (function () {
+    var input = document.querySelector("[data-file-input]");
+    var label = document.querySelector("[data-file-name]");
+    var dropzone = document.querySelector("[data-dropzone]");
+    var form = document.getElementById("upload-form");
+    var submitting = false;
+
+    function showSelectedFile() {
+      label.textContent = input.files.length ? input.files[0].name : "No file selected";
     }
-  });
+
+    if (input && label) {
+      input.addEventListener("change", showSelectedFile);
+    }
+    if (input && label && dropzone) {
+      ["dragenter", "dragover"].forEach(function (name) {
+        dropzone.addEventListener(name, function (event) {
+          event.preventDefault();
+          dropzone.classList.add("dragging");
+        });
+      });
+      ["dragleave", "drop"].forEach(function (name) {
+        dropzone.addEventListener(name, function (event) {
+          event.preventDefault();
+          dropzone.classList.remove("dragging");
+        });
+      });
+      dropzone.addEventListener("drop", function (event) {
+        var files = event.dataTransfer && event.dataTransfer.files;
+        if (!files || !files.length) return;
+        try {
+          var transfer = new DataTransfer();
+          transfer.items.add(files[0]);
+          input.files = transfer.files;
+        } catch (err) {
+          return;
+        }
+        showSelectedFile();
+      });
+    }
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        if (submitting) {
+          event.preventDefault();
+          return;
+        }
+        var file = input && input.files[0];
+        if (file && file.size > 50 * 1024 * 1024) {
+          event.preventDefault();
+          alert("That file is larger than the 50 MiB limit.");
+          return;
+        }
+        submitting = true;
+        var button = form.querySelector("button[type=submit]");
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = '<span class="spinner"></span> Uploading&hellip;';
+        }
+      });
+    }
+    document.querySelectorAll("[data-autosubmit]").forEach(function (select) {
+      select.addEventListener("change", function () {
+        if (select.form) select.form.submit();
+      });
+    });
+  })();
 </script>
 {% endblock %}

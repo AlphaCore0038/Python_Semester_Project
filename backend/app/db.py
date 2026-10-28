@@ -165,6 +165,22 @@ def get_document(document_id: str, user_id: str) -> dict | None:
     return response.data[0] if response.data else None
 
 
+def get_document_report_row(
+    document_id: str, user_id: str
+) -> dict | None:
+    """Return a document row plus its owner email, for Sheets reporting.
+
+    Combines the document metadata with the owner's email so the reporting
+    layer can populate the "User Email" column without exposing secrets.
+    """
+    row = get_document(document_id, user_id)
+    if row is None:
+        return None
+    owner = get_user_by_id(str(row["user_id"]))
+    row["owner_email"] = owner["email"] if owner else None
+    return row
+
+
 def list_documents(
     user_id: str,
     *,

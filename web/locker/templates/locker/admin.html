@@ -1,66 +1,126 @@
 {% extends "locker/base.html" %}
-{% block title %}Admin - AI Digital Locker{% endblock %}
+{% block title %}Administration - AI Digital Locker{% endblock %}
+{% block eyebrow %}Administration{% endblock %}
+{% block page_title %}Overview{% endblock %}
 {% block content %}
-<h2>Administration</h2>
-<p class="muted">Read-only overview of all accounts and documents.</p>
-
-<div class="card">
-  <h3 style="margin-top:0">Users ({{ users|length }})</h3>
-  {% if users %}
-  <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr><th>Email</th><th>Admin</th><th>Registered</th></tr>
-      </thead>
-      <tbody>
-        {% for user in users %}
-        <tr>
-          <td>{{ user.email }}</td>
-          <td>{% if user.is_admin %}Yes{% else %}<span class="muted">No</span>{% endif %}</td>
-          <td class="muted">{{ user.created_at_display }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="page-head">
+  <div>
+    <h2 class="page-title">Administration</h2>
+    <p class="page-sub">A read-only overview of every account and document on this server.</p>
   </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-card">
+    <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>
+    <span>Accounts</span>
+    <strong>{{ users|length }}</strong>
+  </div>
+  <div class="stat-card">
+    <svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>
+    <span>Documents</span>
+    <strong>{{ documents|length }}</strong>
+  </div>
+  <div class="stat-card">
+    <svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>
+    <span>Access</span>
+    <strong style="font-size:1rem;padding-top:0.35rem;">Read-only</strong>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="panel-head split">
+    <div>
+      <h3>Users</h3>
+      <p>{{ users|length }} account{{ users|length|pluralize }} registered</p>
+    </div>
+  </div>
+  {% if users %}
+    <div class="table-wrap">
+      <table class="doc-table admin admin-users">
+        <thead>
+          <tr><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Registered</th></tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td>
+                <div class="doc-cell">
+                  <span class="user-avatar">{{ user.email|first|upper }}</span>
+                  <span class="doc-name">{{ user.email }}</span>
+                </div>
+              </td>
+              <td>
+                {% if user.is_admin %}
+                  <span class="badge admin">Administrator</span>
+                {% else %}
+                  <span class="badge">Member</span>
+                {% endif %}
+              </td>
+              <td class="cell-muted">{{ user.created_at_display }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
     <p class="muted">No users found.</p>
   {% endif %}
-</div>
+</section>
 
-<div class="card">
-  <h3 style="margin-top:0">Documents ({{ documents|length }})</h3>
-  {% if documents %}
-  <div style="overflow-x:auto">
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th><th>Owner</th><th>Type</th><th>Size</th>
-          <th>Uploaded</th><th>Updated</th><th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for doc in documents %}
-        <tr>
-          <td>{{ doc.filename }}</td>
-          <td>
-            {% if doc.owner_email %}{{ doc.owner_email }}
-            {% else %}<span class="muted">unknown</span>{% endif %}
-          </td>
-          <td class="muted">{{ doc.file_type }}</td>
-          <td>{{ doc.file_size_bytes|filesizeformat }}</td>
-          <td class="muted">{{ doc.created_at_display }}</td>
-          <td class="muted">{{ doc.updated_at_display }}</td>
-          <td>
-            <a class="btn secondary" href="{% url 'locker:admin_download' doc.id %}">Download</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<section class="panel">
+  <div class="panel-head split">
+    <div>
+      <h3>Documents</h3>
+      <p>{{ documents|length }} document{{ documents|length|pluralize }} across all accounts</p>
+    </div>
   </div>
+  {% if documents %}
+    <div class="table-wrap">
+      <table class="doc-table admin admin-documents">
+        <thead>
+          <tr>
+            <th scope="col">Document</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Type</th>
+            <th scope="col">Size</th>
+            <th scope="col">Uploaded</th>
+            <th scope="col">Updated</th>
+            <th scope="col"><span class="visually-hidden">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+            <tr>
+              <td>
+                <div class="doc-cell">
+                  <span class="file-chip {% if 'pdf' in doc.file_type %}pdf{% elif 'image' in doc.file_type %}image{% elif 'sheet' in doc.file_type or 'excel' in doc.file_type or 'csv' in doc.file_type %}sheet{% elif 'zip' in doc.file_type or 'compressed' in doc.file_type or 'tar' in doc.file_type %}archive{% endif %}">
+                    <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>
+                  </span>
+                  <span class="doc-name" title="{{ doc.filename }}">{{ doc.filename }}</span>
+                </div>
+              </td>
+              <td class="cell-muted">
+                {% if doc.owner_email %}{{ doc.owner_email }}{% else %}unknown{% endif %}
+              </td>
+              <td class="cell-muted" title="{{ doc.file_type }}">{{ doc.file_type }}</td>
+              <td class="cell-muted">{{ doc.file_size_bytes|filesizeformat }}</td>
+              <td class="cell-muted dt-cell">{{ doc.created_at_display }}</td>
+              <td class="cell-muted dt-cell">{{ doc.updated_at_display }}</td>
+              <td>
+                <div class="row-actions">
+                  <a class="icon-btn" href="{% url 'locker:admin_download' doc.id %}" title="Download" aria-label="Download {{ doc.filename }}">
+                    <svg class="icon-sm" aria-hidden="true"><use href="#i-download"/></svg>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
     <p class="muted">No documents found.</p>
   {% endif %}
-</div>
+</section>
 {% endblock %}

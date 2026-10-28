@@ -24,12 +24,12 @@ Django Web App (web/)          Tkinter Desktop App (desktop/)
   (metadata + files)
 
   Local AI: UI placeholder only — no inference backend in this version.
-  Google Sheets: administrative registry, deferred by the owner's decision.
+  Google Sheets: best-effort administrative metadata reporting (Phase 11A).
 ```
 
 - **backend/** — shared FastAPI API: authentication, document operations, AI endpoints,
-  and read-only administrator endpoints. The only component that holds Supabase and
-  OpenRouter credentials.
+  read-only administrator endpoints, and optional Sheets reporting. The only component
+  that holds Supabase, OpenRouter, and Google service-account credentials.
 - **web/** — Django client (browser UI). Talks to FastAPI over HTTP.
 - **desktop/** — Tkinter Windows client (`py locker.py`). Talks to FastAPI over
   HTTP; may keep optional local offline copies of documents (this device only).
@@ -74,16 +74,18 @@ or Tkinter clients and are never committed to Git.
 | 6 | Django web client | **Complete** |
 | 7 | Tkinter desktop client | **Complete** |
 | 8 | AI assistant (OpenRouter) | **Complete** |
-| 9 | Admin access (manual bootstrap, read-only API, web dashboard; Google Sheets deferred) | **Complete** |
+| 9 | Admin access (manual bootstrap, read-only API, web dashboard) | **Complete** |
 | 10 | Demo polish (setup/docs, runbook, smoke checks) | **Complete** |
+| 11A | Google Sheets reporting and shared web/desktop visual refresh | **Complete** |
 
 Phases 1–10 are implemented and committed. Phase 9 provides a single,
 manually bootstrapped administrator with read-only FastAPI endpoints, a web-only
 dashboard at `/admin/`, and audited cross-user downloads. Phase 10 adds no new
 product features: it fixes the Windows setup flow (Django database migration and
 a non-conflicting web port), documents the opaque-session/PBKDF2 implementation,
-and adds the repeatable demo runbook below. Google Sheets remains deferred by the
-owner's decision, and the desktop client has no admin UI. The specification's §32
+and adds the repeatable demo runbook below. Phase 11A adds best-effort Google
+Sheets metadata reporting and the shared web/desktop visual refresh, and the
+desktop client has no admin UI. The specification's §32
 open-decision list is preserved as written; this README does not treat those
 entries as newly settled. Target Python version: **3.14** (verified locally on
 3.14.6; Django 6.1 and current FastAPI both support it).
@@ -180,12 +182,12 @@ checks confirmed the backend can read the session table (invalid bearer ->
 unknown-email login (401). The Phase 10 harness did not perform a valid-password
 login. A new Supabase project still needs the SQL above applied first.
 
-**Password hash migration.** Existing accounts still have legacy bcrypt
-hashes (`$2a$`/`$2b$`/`$2y$`). They remain valid while the `bcrypt` package is
-present. After a successful login, the backend transparently replaces that
-user's stored hash with a PBKDF2 hash; the password itself is unchanged and no
-reset is required. New registrations use PBKDF2 immediately. The existing user
-id, `is_admin` flag, and documents are untouched. There is no database schema
+**Password hash migration.** Existing legacy bcrypt hashes
+(`$2a$`/`$2b$`/`$2y$`) remain valid while the `bcrypt` package is present.
+After a successful login, the backend transparently replaces that user's stored
+hash with a PBKDF2 hash; the password itself is unchanged and no reset is
+required. New registrations use PBKDF2 immediately. The existing user id,
+`is_admin` flag, and documents are untouched. There is no database schema
 change. To check whether any legacy hashes remain:
 
 ```sql
@@ -198,11 +200,10 @@ Keep the bcrypt fallback and dependency until this count is zero. Accounts that
 never log in remain legacy; do not remove the fallback until they have either
 logged in or been explicitly reset by the owner.
 
-**Phase 10 live check (2026-10-27).** A read-only query against the live
-`public.users` table found **3 legacy bcrypt hashes**. No user records or
-password hashes were changed. Re-run the query above after demo logins; bcrypt
-must remain installed while the count is nonzero, and Stage 2 still requires
-explicit owner approval.
+**Phase 11A live check (2026-10-28).** A read-only query against the live
+`public.users` table found **2 legacy bcrypt hashes**. No user records or
+password hashes were changed. The bcrypt fallback remains installed until the
+count is zero and the owner explicitly approves its removal.
 
 Rules enforced by the API: emails are normalized to lowercase (duplicate
 registration is case-insensitive); passwords must be 8-72 UTF-8 bytes (never
@@ -475,8 +476,9 @@ Failed Storage retrievals return a controlled 500 and do not write a
 successful-download audit entry. This is an application log, not a database
 audit table; retention depends on how the backend is hosted.
 
-**Google Sheets** remains deferred by the owner's decision. No Sheets code,
-credentials, or reporting endpoints exist.
+**Google Sheets** is implemented as an optional, best-effort administrative
+metadata registry (Phase 11A, below). It is not the primary database and never
+receives document contents, passwords, session tokens, or credentials.
 
 **Verification status (Phase 9):**
 
@@ -497,7 +499,7 @@ credentials, or reporting endpoints exist.
   password was not available to the verification harness; the login page itself
   renders), and a live registration attempt supplying `is_admin=true` (mocked
   test only, to avoid creating a disposable account).
-- **Automated tests (Phase 10):** backend 134, web 52, desktop 39 — all passing and
+- **Automated tests (current):** backend 169, web 61, desktop 39 — all passing and
   all external services mocked. They do not prove live behavior.
 
 ## Demo runbook (Phase 10)
@@ -557,7 +559,7 @@ selected document text to OpenRouter; Local AI is only a disabled placeholder.
 
 ### Phase 10 verification (2026-10-27)
 
-- **Automated:** backend 134, web 52, desktop 39 passing; Django `check` and
+- **Automated:** backend 144, web 52, desktop 39 passing; Django `check` and
   `migrate --check` pass. All external services are mocked in these tests.
 - **Local live smoke checks (real backend `.env` and real Supabase):**
   `/health` returned 200; invalid-token `/auth/me` returned 401; invalid-token
@@ -572,10 +574,75 @@ selected document text to OpenRouter; Local AI is only a disabled placeholder.
   upload/download/Storage, live OpenRouter AI, browser interaction, or desktop
   against the live backend. Earlier phases reported live AI/Storage checks;
   those remain historical claims.
-- **Remaining auth-migration blocker:** the live users table had 3 legacy bcrypt
-  hashes at the Phase 10 check (read-only). Keep bcrypt until the count is zero
-  and the owner explicitly approves Stage 2.
+- **Auth migration:** the live users table had 2 legacy bcrypt hashes at the
+  2026-10-28 check (read-only). The bcrypt fallback remains installed until the
+  count is zero and the owner explicitly approves its removal.
 
-## License / scope
+## Google Sheets reporting (Phase 11A)
 
-Personal use, college evaluation, and portfolio presentation. Not a production service.
+Per spec §22/§23, Google Sheets is an administrative document registry and
+reporting layer. It is **not** the primary database — Supabase PostgreSQL remains
+the source of truth for document metadata, and Supabase Storage remains the file
+store. Sheets is a secondary, best-effort reporting layer.
+
+### What is reported
+
+Each document is represented by one row with these eight columns, in order:
+
+1. Document ID
+2. User Email
+3. Filename
+4. File Type
+5. File Size
+6. Upload Time
+7. Last Modified
+8. Storage Mode
+
+Document contents, file bytes, passwords, session tokens, and credentials are
+**never** sent to Google Sheets. Only the metadata above is shared.
+
+### Synchronization behavior
+
+- **Upload:** after the document and metadata are created in Supabase, a
+  corresponding spreadsheet row is created or updated.
+- **Rename:** the existing row identified by Document ID is updated in place;
+  no duplicate row is appended.
+- **Delete:** the corresponding registry row is removed when the document is
+  successfully deleted.
+- **Idempotency:** rows are matched by Document ID, so retries do not create
+  duplicate rows.
+
+Sheets is a secondary system: a configuration or API failure is logged and
+swallowed, and it never turns a successful document operation into a user-facing
+failure. Document uploads, renames, and deletes succeed even if Sheets is not
+configured or unreachable.
+
+### Setup
+
+1. Create a Google Sheet with the header row:
+   `Document ID, User Email, Filename, File Type, File Size, Upload Time,
+   Last Modified, Storage Mode`. The backend targets the spreadsheet's first
+   worksheet, whatever its title is.
+2. Share the spreadsheet with the Google service-account identity
+   (`client_email` in your service-account JSON key) so it can write.
+3. Copy `backend/.env.example` to `backend/.env` and set:
+   - `GOOGLE_SHEET_ID` — the ID from the spreadsheet URL.
+   - `GOOGLE_SERVICE_ACCOUNT_FILE` — path to the service-account JSON key file
+     (server-only; never commit it).
+4. Restart the backend.
+
+If `GOOGLE_SHEET_ID` is not set, the backend starts and runs normally without
+Sheets reporting.
+
+### Limitations
+
+- Reporting is best-effort and not transactional with Supabase; a sheet write
+  that fails is logged but does not roll back the document operation.
+- The first worksheet's `sheetId` and title are discovered when the backend
+  first connects; if the worksheet is renamed or removed later, reporting may
+  fail until the backend is restarted.
+- No retry mechanism beyond the single API call is implemented; transient
+  failures are logged and skipped.
+- Concurrent updates to the sheet from multiple processes are not coordinated;
+  a read-then-write cycle can target a stale row if another writer changes the
+  sheet in between.

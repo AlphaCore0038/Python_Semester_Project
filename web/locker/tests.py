@@ -3,10 +3,12 @@
 All HTTP calls to FastAPI are mocked at `locker.fastapi_client.requests`;
 no live backend, no Supabase, no network access.
 """
+import tempfile
 import requests as real_requests
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -154,6 +156,13 @@ class AuthFlowTests(MockedAPITestCase):
         self.assertContains(page, "Incorrect email or password")
         self.assertNotIn("api_token", self.client.session)
 
+    def test_auth_fields_have_autocomplete_attributes(self):
+        login = self.client.get(reverse("locker:login"))
+        self.assertContains(login, 'autocomplete="email"')
+        self.assertContains(login, 'autocomplete="current-password"')
+        register = self.client.get(reverse("locker:register"))
+        self.assertContains(register, 'autocomplete="new-password"')
+
     def test_logout_is_post_only_clears_session_and_revokes_remote(self):
         self._login()
         get_resp = self.client.get(reverse("locker:logout"))
@@ -276,6 +285,24 @@ class DashboardTests(MockedAPITestCase):
             doc_calls[0]["params"],
             {"search": "notes", "sort": "filename", "order": "asc",
              "file_type": "application/pdf"},
+        )
+
+    def test_usage_failure_does_not_hide_documents(self):
+        self._seed_session()
+        self.route("GET", "/documents/usage", status=500,
+                   json_data={"detail": "usage unavailable"})
+        self.route("GET", "/documents", json_data=[DOC])
+        resp = self.client.get(reverse("locker:dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "notes.pdf")
+        self.assertNotContains(resp, "usage-bar")
+
+    def test_document_subtitle_shows_actual_file_type(self):
+        self._seed_session()
+        self._api_doc_calls()
+        resp = self.client.get(reverse("locker:dashboard"))
+        self.assertContains(
+            resp, '<span class="doc-type">application/pdf</span>'
         )
 
     def test_dashboard_network_failure_shows_generic_message(self):
@@ -596,13 +623,21 @@ class AITests(MockedAPITestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(resp.url.startswith("/login"), resp.url)
 
-    def test_floating_ai_button_visible_only_when_logged_in(self):
+    def test_floating_ai_button_hidden_on_ai_page(self):
         self._seed_ai()
-        logged_in = self.client.get(reverse("locker:dashboard"))
-        self.assertContains(logged_in, 'class="floating-ai"')
-        self.client.post(reverse("locker:logout"))
-        logged_out = self.client.get(reverse("locker:login"))
-        self.assertNotContains(logged_out, 'class="floating-ai"')
+        dashboard = self.client.get(reverse("locker:dashboard"))
+        self.assertContains(dashboard, 'class="floating-ai"')
+        ai_page = self.client.get(reverse("locker:ai"))
+        self.assertNotContains(ai_page, 'class="floating-ai"')
+
+    def test_ai_tabs_have_aria_state_and_controls(self):
+        self._seed_ai()
+        resp = self.client.get(reverse("locker:ai"))
+        self.assertContains(resp, 'aria-controls="ai-panel-ask"')
+        self.assertContains(resp, 'aria-controls="ai-panel-summarize"')
+        self.assertContains(resp, 'aria-controls="ai-panel-suggest"')
+        self.assertContains(resp, 'aria-selected="true"')
+        self.assertContains(resp, 'aria-selected="false"')
 
     def test_ai_calls_use_long_timeout_regular_calls_keep_short(self):
         self._seed_ai()
@@ -669,6 +704,8 @@ class AdminTests(MockedAPITestCase):
         self.assertContains(resp, "application/pdf")
         self.assertContains(resp, "2026-10-20 10:00 UTC")
         self.assertContains(resp, "2026-10-01 09:00 UTC")
+        self.assertContains(resp, "admin-users")
+        self.assertContains(resp, "admin-documents")
         self.assertContains(
             resp,
             reverse("locker:admin_download", kwargs={"document_id": DOC["id"]}),
@@ -788,3 +825,57 @@ class TimestampDisplayTests(TestCase):
     def test_missing_or_invalid_timestamps_are_safe(self):
         for value in (None, "", "not-a-date", "2026-99-99T99:99:99Z", 123):
             self.assertEqual(views._format_utc(value), "\u2014")
+
+
+class StaticAssetTests(TestCase):
+    """Static assets must be discoverable, served, and present after collectstatic."""
+
+    ASSETS = (
+        "locker/app.css",
+        "document_lock_logo.png",
+        "document_lock_logo.svg",
+        "document_lock_logo.ico",
+        "moody_blue_gradient_glow.png",
+    )
+
+    def test_static_assets_are_discoverable(self):
+        from django.contrib.staticfiles import finders
+
+        for name in self.ASSETS:
+            self.assertIsNotNone(finders.find(name), name)
+
+    def test_static_assets_served_over_http(self):
+        for name in self.ASSETS:
+            response = self.client.get(f"/static/{name}")
+            self.assertEqual(response.status_code, 200, name)
+
+    def test_favicon_route_redirects_to_static_ico(self):
+        response = self.client.get("/favicon.ico")
+        self.assertRedirects(
+            response,
+            "/static/document_lock_logo.ico",
+            status_code=301,
+            fetch_redirect_response=False,
+        )
+
+    def test_login_page_references_root_static_urls(self):
+        response = self.client.get(reverse("locker:login"))
+        self.assertContains(response, "/static/locker/app.css")
+        self.assertContains(response, "/static/document_lock_logo.png")
+        self.assertContains(response, "/static/document_lock_logo.ico")
+        self.assertContains(response, "/static/moody_blue_gradient_glow.png")
+
+    def test_collectstatic_serves_assets_with_production_settings(self):
+        with tempfile.TemporaryDirectory() as static_root:
+            with override_settings(
+                DEBUG=False,
+                STATIC_ROOT=static_root,
+                WHITENOISE_USE_FINDERS=False,
+                WHITENOISE_AUTOREFRESH=False,
+            ):
+                call_command("collectstatic", interactive=False, verbosity=0)
+                client = Client()
+                for name in self.ASSETS:
+                    response = client.get(f"/static/{name}")
+                    self.assertEqual(response.status_code, 200, name)
+                    response.close()

@@ -1,19 +1,58 @@
 {% extends "locker/base.html" %}
-{% block title %}Register - AI Digital Locker{% endblock %}
+{% load static %}
+{% block title %}Create account - AI Digital Locker{% endblock %}
 {% block content %}
-<div class="card" style="max-width:420px;margin:0 auto">
-  <h2>Create account</h2>
-  {% if form.non_field_errors %}<ul class="errlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-  <form method="post">
-    {% csrf_token %}
-    <label for="id_email">Email</label>
-    {{ form.email }}
-    {{ form.email.errors }}
-    <label for="id_password">Password (8+ characters)</label>
-    {{ form.password }}
-    {{ form.password.errors }}
-    <p><button type="submit">Register</button></p>
-  </form>
-  <p class="muted">Already registered? <a href="{% url 'locker:login' %}">Sign in</a></p>
+<div class="auth-shell">
+  <section class="auth-visual">
+    <div class="auth-visual-inner">
+      <a class="auth-brand" href="{% url 'locker:login' %}">
+        <img src="{% static 'document_lock_logo.png' %}" alt="" width="32" height="36">
+        AI Digital Locker
+      </a>
+      <div class="auth-copy">
+        <span class="eyebrow">Start your vault</span>
+        <h1>Your files,<br><em>under lock and key.</em></h1>
+        <p>Create an account to upload documents, keep them organized, and let the AI assistant do the tedious filing work.</p>
+        <ul class="auth-points">
+          <li><svg class="icon" aria-hidden="true"><use href="#i-storage"/></svg> Generous private storage</li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg> A clean home for every file type</li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg> Helpful AI, never automatic renames</li>
+        </ul>
+      </div>
+      <p class="auth-footnote">Your documents stay yours.</p>
+    </div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <img class="auth-logo" src="{% static 'document_lock_logo.png' %}" alt="AI Digital Locker logo" width="44" height="50">
+      <h2>Create your account</h2>
+      <p class="auth-sub">A private locker in under a minute.</p>
+
+      {% if form.non_field_errors %}
+        <div class="form-errors">
+          <ul class="errlist">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_email">Email</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+        <div class="field">
+          <label for="id_password">Password</label>
+          {{ form.password }}
+          {{ form.password.errors }}
+          <span class="auth-hint">At least 8 characters.</span>
+        </div>
+        <button class="btn primary lg block" type="submit">Create account</button>
+      </form>
+
+      <p class="auth-switch">Already registered? <a href="{% url 'locker:login' %}">Sign in</a>.</p>
+    </div>
+  </section>
 </div>
 {% endblock %}

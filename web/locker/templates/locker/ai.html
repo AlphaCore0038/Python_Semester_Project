@@ -1,90 +1,188 @@
 {% extends "locker/base.html" %}
 {% block title %}AI Assistant - AI Digital Locker{% endblock %}
+{% block eyebrow %}Intelligence{% endblock %}
+{% block page_title %}AI Assistant{% endblock %}
 {% block content %}
-<h1>AI Assistant</h1>
-
-<div class="card">
-  {% if ai_status.configured %}
-    <p><strong>Cloud AI</strong> ({{ ai_status.provider }}) &mdash; model <code>{{ ai_status.model }}</code></p>
-  {% else %}
-    <p class="msg warning">Cloud AI is not configured on this server yet. Features here will stay disabled until it is.</p>
-  {% endif %}
-  <p class="muted">Local AI: unavailable (planned for a later phase).</p>
+<div class="page-head">
+  <div>
+    <h2 class="page-title">Ask your library</h2>
+    <p class="page-sub">Find answers, summarize documents, or get a better filename &mdash; you stay in control of every change.</p>
+  </div>
 </div>
 
-<div class="card">
-  <h2>Ask a question</h2>
-  <form method="post" action="{% url 'locker:ai' %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="ask">
-    <label for="question">Question</label>
-    <input type="text" id="question" name="question" maxlength="1000"
-           value="{{ request.POST.question }}"
-           placeholder="e.g. What was my internship stipend?">
-    <button type="submit" {% if not ai_status.configured %}disabled{% endif %}>Ask</button>
-  </form>
-</div>
-
-<div class="card">
-  <h2>Summarize a document</h2>
-  <form method="post" action="{% url 'locker:ai' %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="summarize">
-    <label for="summarize_doc">Document</label>
-    <select id="summarize_doc" name="document_id" required>
-      {% for doc in documents %}
-        <option value="{{ doc.id }}">{{ doc.filename }}</option>
-      {% empty %}
-        <option disabled>No documents yet</option>
-      {% endfor %}
-    </select>
-    <button type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>Summarize</button>
-  </form>
-</div>
-
-<div class="card">
-  <h2>Suggest a better filename</h2>
-  <form method="post" action="{% url 'locker:ai' %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="suggest">
-    <label for="suggest_doc">Document</label>
-    <select id="suggest_doc" name="document_id" required>
-      {% for doc in documents %}
-        <option value="{{ doc.id }}">{{ doc.filename }}</option>
-      {% empty %}
-        <option disabled>No documents yet</option>
-      {% endfor %}
-    </select>
-    <button type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>Suggest name</button>
-  </form>
-  <p class="muted">Suggestions are proposals only. You still confirm any rename on the usual rename page.</p>
-</div>
-
-{% if result %}
-  <div class="card">
-    <h2>Result</h2>
-    {% if result.kind == "ask" %}
-      <p><strong>Question:</strong> {{ request.POST.question }}</p>
-      <p>{{ result.data.answer }}</p>
-      {% if result.data.sources %}
-        <p class="muted">Based on:
-          {% for source in result.data.sources %}{{ source.filename }}{% if not forloop.last %}, {% endif %}{% endfor %}
-        </p>
+<section class="panel ai-status">
+  <div class="ai-status-main">
+    <span class="ai-orb">
+      <svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg>
+    </span>
+    <div>
+      <h3>Cloud AI</h3>
+      {% if ai_status.configured %}
+        <p>Ready &middot; model <code>{{ ai_status.model }}</code></p>
       {% else %}
-        <p class="muted">No matching documents were used for this answer.</p>
+        <p>Not configured on this server yet.</p>
       {% endif %}
-    {% elif result.kind == "summarize" %}
-      <p><strong>Summary of {{ result.data.sources.0.filename }}:</strong></p>
-      <p>{{ result.data.summary }}</p>
-    {% elif result.kind == "suggest" %}
-      <p><strong>Current name:</strong> {{ result.data.current_filename }}</p>
-      <p><strong>Suggested name:</strong> {{ result.data.suggested_filename }}</p>
-      <p class="muted">{{ result.data.reason }}</p>
-      <a class="btn"
-         href="{% url 'locker:rename' result.document_id %}?filename={{ result.data.suggested_filename|urlencode }}">
-        Apply suggestion (you'll confirm)
-      </a>
-    {% endif %}
+    </div>
+  </div>
+  <span class="chip {% if ai_status.configured %}ok{% else %}warn{% endif %}">
+    {% if ai_status.configured %}Connected{% else %}Offline{% endif %}
+  </span>
+</section>
+<p class="local-note">Local AI: unavailable (planned for a later phase).</p>
+
+{% if not ai_status.configured %}
+  <div class="msg warning" style="margin-bottom:1.25rem;">
+    Cloud AI is not configured on this server yet. Features here will stay disabled until it is configured in <code>backend/.env</code>.
   </div>
 {% endif %}
+
+<section class="panel composer">
+  <div class="tabs" role="tablist" aria-label="AI mode">
+    <button class="tab {% if not result or result.kind == 'ask' %}active{% endif %}" id="ai-tab-ask" type="button" role="tab" data-tab-target="ask" aria-controls="ai-panel-ask" aria-selected="{% if not result or result.kind == 'ask' %}true{% else %}false{% endif %}">Ask</button>
+    <button class="tab {% if result.kind == 'summarize' %}active{% endif %}" id="ai-tab-summarize" type="button" role="tab" data-tab-target="summarize" aria-controls="ai-panel-summarize" aria-selected="{% if result.kind == 'summarize' %}true{% else %}false{% endif %}">Summarize</button>
+    <button class="tab {% if result.kind == 'suggest' %}active{% endif %}" id="ai-tab-suggest" type="button" role="tab" data-tab-target="suggest" aria-controls="ai-panel-suggest" aria-selected="{% if result.kind == 'suggest' %}true{% else %}false{% endif %}">Suggest a name</button>
+  </div>
+
+  <form method="post" action="{% url 'locker:ai' %}" class="composer-form tab-panel {% if not result or result.kind == 'ask' %}active{% endif %}" id="ai-panel-ask" role="tabpanel" aria-labelledby="ai-tab-ask" data-tab-panel="ask">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="ask">
+    <div class="field">
+      <label for="question">Your question</label>
+      <input type="text" id="question" name="question" maxlength="1000"
+             value="{{ request.POST.question }}"
+             placeholder="e.g. What was my internship stipend?">
+    </div>
+    <button class="btn primary" type="submit" {% if not ai_status.configured %}disabled{% endif %}>
+      <svg class="icon-sm" aria-hidden="true"><use href="#i-spark"/></svg>
+      Ask
+    </button>
+  </form>
+
+  <form method="post" action="{% url 'locker:ai' %}" class="composer-form tab-panel {% if result.kind == 'summarize' %}active{% endif %}" id="ai-panel-summarize" role="tabpanel" aria-labelledby="ai-tab-summarize" data-tab-panel="summarize">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="summarize">
+    <div class="field">
+      <label for="summarize_doc">Document to summarize</label>
+      <select id="summarize_doc" name="document_id" required>
+        {% for doc in documents %}
+          <option value="{{ doc.id }}">{{ doc.filename }}</option>
+        {% empty %}
+          <option disabled>No documents yet</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn primary" type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>
+      Summarize
+    </button>
+  </form>
+
+  <form method="post" action="{% url 'locker:ai' %}" class="composer-form tab-panel {% if result.kind == 'suggest' %}active{% endif %}" id="ai-panel-suggest" role="tabpanel" aria-labelledby="ai-tab-suggest" data-tab-panel="suggest">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="suggest">
+    <div class="field">
+      <label for="suggest_doc">Document to rename</label>
+      <select id="suggest_doc" name="document_id" required>
+        {% for doc in documents %}
+          <option value="{{ doc.id }}">{{ doc.filename }}</option>
+        {% empty %}
+          <option disabled>No documents yet</option>
+        {% endfor %}
+      </select>
+      <span class="auth-hint">Suggestions are proposals only. You confirm any rename on the rename page.</span>
+    </div>
+    <button class="btn primary" type="submit" {% if not ai_status.configured or not documents %}disabled{% endif %}>
+      Suggest name
+    </button>
+  </form>
+
+  <noscript>
+    <style>.tab-panel { display: block; margin-top: 1rem; }</style>
+  </noscript>
+</section>
+
+{% if result %}
+  <section class="chat" aria-live="polite">
+    {% if result.kind == "ask" %}
+      <div class="bubble user">
+        <div class="bubble-head">You</div>
+        <p>{{ request.POST.question }}</p>
+      </div>
+      <div class="bubble assistant">
+        <div class="bubble-head">
+          <span class="ai-orb sm"><svg class="icon-sm" aria-hidden="true"><use href="#i-spark"/></svg></span>
+          Assistant
+        </div>
+        <p>{{ result.data.answer }}</p>
+        {% if result.data.sources %}
+          <div class="sources">
+            {% for source in result.data.sources %}
+              <span class="doc-pill">
+                <svg class="icon-sm" aria-hidden="true"><use href="#i-file"/></svg>
+                {{ source.filename }}
+              </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted small">No matching documents were used for this answer.</p>
+        {% endif %}
+      </div>
+    {% elif result.kind == "summarize" %}
+      <div class="bubble assistant">
+        <div class="bubble-head">
+          <span class="ai-orb sm"><svg class="icon-sm" aria-hidden="true"><use href="#i-spark"/></svg></span>
+          Summary{% if result.data.sources %} &middot; {{ result.data.sources.0.filename }}{% endif %}
+        </div>
+        <p>{{ result.data.summary }}</p>
+      </div>
+    {% elif result.kind == "suggest" %}
+      <div class="bubble assistant">
+        <div class="bubble-head">
+          <span class="ai-orb sm"><svg class="icon-sm" aria-hidden="true"><use href="#i-spark"/></svg></span>
+          Filename suggestion
+        </div>
+        <div class="suggestion-card">
+          <div class="suggestion-row"><span>Current</span><strong>{{ result.data.current_filename }}</strong></div>
+          <div class="suggestion-row"><span>Suggested</span><strong>{{ result.data.suggested_filename }}</strong></div>
+        </div>
+        <p class="muted small" style="margin-top:0.6rem;">{{ result.data.reason }}</p>
+        <div class="page-actions" style="margin-top:0.8rem;">
+          <a class="btn primary" href="{% url 'locker:rename' result.document_id %}?filename={{ result.data.suggested_filename|urlencode }}">
+            <svg class="icon-sm" aria-hidden="true"><use href="#i-pencil"/></svg>
+            Apply suggestion
+          </a>
+        </div>
+        <p class="muted small" style="margin-top:0.5rem;">You will confirm the new name before anything changes.</p>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
+
+<script>
+  (function () {
+    var tabs = document.querySelectorAll("[data-tab-target]");
+    var panels = document.querySelectorAll("[data-tab-panel]");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (item) {
+          item.classList.remove("active");
+          item.setAttribute("aria-selected", "false");
+        });
+        panels.forEach(function (panel) { panel.classList.remove("active"); });
+        tab.classList.add("active");
+        tab.setAttribute("aria-selected", "true");
+        var target = document.querySelector('[data-tab-panel="' + tab.dataset.tabTarget + '"]');
+        if (target) target.classList.add("active");
+      });
+    });
+    document.querySelectorAll(".composer-form").forEach(function (form) {
+      form.addEventListener("submit", function () {
+        var button = form.querySelector("button[type=submit]");
+        if (!button || button.disabled) return;
+        button.disabled = true;
+        button.dataset.label = button.textContent;
+        button.innerHTML = '<span class="spinner"></span> Working&hellip;';
+      });
+    });
+  })();
+</script>
 {% endblock %}

@@ -9,6 +9,9 @@ venv/
 env/
 ENV/
 
+secrets/
+*.service-account.json
+
 # Python caches and compiled files
 __pycache__/
 *.py[cod]
@@ -21,10 +24,14 @@ __pycache__/
 # Desktop client: local offline document copies (never commit user documents)
 desktop/offline/
 
-# Credential files (Google service accounts, etc.)
+# Credential files (Google service accounts, private keys, etc.)
 credentials*.json
 service_account*.json
 service-account*.json
+*service-account*.json
+*service_account*.json
+*.pem
+*.key
 
 # Build artifacts and generated files
 dist/
@@ -47,3 +54,6 @@ Thumbs.db
 # Manual test documents (live-test scratch files, never commit)
 backend/test-locker.txt
 backend/phase8-*.txt
+
+# Generated knowledge-graph artifacts
+graphify-out/

@@ -9,13 +9,29 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class RegisterForm(forms.Form):
-    email = forms.EmailField(max_length=255, validators=[validate_email])
-    password = forms.CharField(min_length=8, max_length=128, strip=False)
+    email = forms.EmailField(
+        max_length=255,
+        validators=[validate_email],
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+    password = forms.CharField(
+        min_length=8,
+        max_length=128,
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
 
 
 class LoginForm(forms.Form):
-    email = forms.EmailField(max_length=255)
-    password = forms.CharField(max_length=128, strip=False)
+    email = forms.EmailField(
+        max_length=255,
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+    password = forms.CharField(
+        max_length=128,
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
 
 
 class RenameForm(forms.Form):

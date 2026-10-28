@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        run: pytest
+        working-directory: backend
+
+  web:
+    name: Django web tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install web dependencies
+        run: pip install -r web/requirements.txt
+
+      - name: Run web tests
+        run: python manage.py test
+        working-directory: web
+
+  desktop:
+    name: Desktop tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install desktop dependencies
+        run: pip install -r desktop/requirements.txt
+
+      - name: Install Tkinter (for desktop UI tests)
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Run desktop tests
+        run: pytest
+        working-directory: desktop

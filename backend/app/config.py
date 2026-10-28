@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     storage_quota_bytes: int = 524_288_000  # 500 MB per user (spec)
     max_upload_bytes: int = 52_428_800  # 50 MB: Supabase Free per-file limit
 
+    # Optional Google Sheets reporting (spec §22/§23). Both default to empty so
+    # the backend starts and runs normally without Sheets configured.
+    google_sheet_id: str = ""
+    google_service_account_file: str = ""
+
 
 def _placeholder_fields(settings: Settings) -> list[str]:
     values = {

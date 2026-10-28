@@ -1,17 +1,30 @@
 {% extends "locker/base.html" %}
-{% block title %}Rename - AI Digital Locker{% endblock %}
+{% block title %}Rename document - AI Digital Locker{% endblock %}
+{% block eyebrow %}Documents{% endblock %}
+{% block page_title %}Rename{% endblock %}
 {% block content %}
-<div class="card" style="max-width:460px">
-  <h2>Rename document</h2>
-  <form method="post">
-    {% csrf_token %}
-    <label for="id_filename">New filename</label>
-    {{ form.filename }}
-    {{ form.filename.errors }}
-    <p>
-      <button type="submit">Save</button>
-      <a class="btn secondary" href="{% url 'locker:dashboard' %}">Cancel</a>
-    </p>
-  </form>
+<div class="dialog-page">
+  <div class="dialog">
+    <span class="dialog-icon">
+      <svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg>
+    </span>
+    <h2>Rename document</h2>
+    <p>Choose a clearer name. The file itself stays exactly the same.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_filename">New filename</label>
+        {{ form.filename }}
+        {{ form.filename.errors }}
+      </div>
+      <div class="dialog-actions">
+        <a class="btn ghost" href="{% url 'locker:dashboard' %}">Cancel</a>
+        <button class="btn primary" type="submit">
+          <svg class="icon-sm" aria-hidden="true"><use href="#i-check"/></svg>
+          Save name
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}
