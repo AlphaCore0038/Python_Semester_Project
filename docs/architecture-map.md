@@ -73,9 +73,9 @@
 
 ## Graphify findings
 - Artifacts: `graphify-out/` (intentionally dirty, never staged).
-- Reported baseline: commit `d7985ae3`; 888 nodes, 1927 edges, 61 communities.
-- The reported graph baseline predates Phase 11A and the final UI changes, so the
-  code graph is stale; refresh it after code changes.
+- Last local refresh: 2026-10-28 from commit `cff62e88`; 1136 nodes, 2333 edges,
+  76 communities. The artifacts are unstaged and may be newer than the committed
+  snapshot; refresh after code changes.
 - God nodes include `token_for()`, `make_user()`, `FakeUserStore`, `MainView`,
   `ApiClient`, `upload()`, `get_supabase()`.
 - `graphify path` uses directed call edges; `graphify query` is better for scoped

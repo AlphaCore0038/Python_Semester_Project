@@ -84,9 +84,9 @@ Outstanding work:
 
 ## Graphify reference
 - Graph artifacts live in `graphify-out/` and are intentionally dirty/unstaged.
-- Reported graph baseline: commit `d7985ae3` (888 nodes, 1927 edges, 61 communities).
-- The reported graph baseline predates Phase 11A and the final UI changes, so the
-  code graph is stale; refresh after code changes: `graphify update .` (AST-only,
+- Last local refresh: 2026-10-28 from commit `cff62e88` (1136 nodes, 2333 edges,
+  76 communities). The artifacts are unstaged, so they can be newer than the last
+  committed snapshot; refresh after code changes: `graphify update .` (AST-only,
   no API cost).
 - Do not stage `graphify-out/` output.
 - Use `graphify query "<question>"`, `graphify path "<A>" "<B>"`, and

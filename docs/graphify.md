@@ -5,11 +5,11 @@
 - Contents: `graph.json`, `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, cache, labels.
 - `graphify-out/` is intentionally dirty and must never be staged or committed.
 
-## Reported generation baseline
-- Graph report says built from commit `d7985ae3`.
-- The baseline predates Phase 11A and the final UI changes, so the code graph is
-  stale; refresh it after code changes.
-- Reported coverage: 888 nodes, 1927 edges, 61 communities, 98% EXTRACTED / 2% INFERRED.
+## Local generation baseline
+- Last local refresh: 2026-10-28, built from commit `cff62e88`.
+- Coverage: 1136 nodes, 2333 edges, 76 communities, 98% EXTRACTED / 2% INFERRED.
+- The artifacts are unstaged, so they may be newer than the last committed
+  snapshot; refresh after code changes.
 
 ## Safe refresh procedure
 - After modifying code: `graphify update .` (AST-only, no API cost).
