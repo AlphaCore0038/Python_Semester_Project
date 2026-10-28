@@ -844,6 +844,7 @@ class StaticAssetTests(TestCase):
         for name in self.ASSETS:
             self.assertIsNotNone(finders.find(name), name)
 
+    @override_settings(DEBUG=True, WHITENOISE_USE_FINDERS=True)
     def test_static_assets_served_over_http(self):
         for name in self.ASSETS:
             response = self.client.get(f"/static/{name}")

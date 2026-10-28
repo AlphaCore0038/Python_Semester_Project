@@ -472,9 +472,9 @@ def test_delete_uses_discovered_sheet_id():
     assert body["requests"][0]["deleteDimension"]["range"]["sheetId"] == 42
 
 
-def test_empty_config_disables_reporting(monkeypatch):
-    monkeypatch.setenv("GOOGLE_SHEET_ID", "")
-    monkeypatch.setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+def test_empty_config_disables_reporting(env):
+    env.setenv("GOOGLE_SHEET_ID", "")
+    env.setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
     config.get_settings.cache_clear()
     client = sheets.SheetsClient()
     # Should not attempt any Google API initialization.
