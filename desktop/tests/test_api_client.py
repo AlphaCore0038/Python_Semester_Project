@@ -1,3 +1,4 @@
+# desktop/tests/test_api_client.py: Tests for tests.
 """API client tests via httpx.MockTransport - no network, no credentials."""
 from pathlib import Path
 
@@ -86,7 +87,7 @@ def test_list_documents_forwards_params_and_bearer_header_not_url():
         "file_type": "application/pdf",
     }
     assert seen["auth"] == f"Bearer {TOKEN}"
-    assert TOKEN not in seen["url"]  # token never in a URL
+    assert TOKEN not in seen["url"]                        
 
 
 def test_usage_and_me_and_rename_and_delete():
@@ -156,7 +157,7 @@ def test_download_streams_to_file_and_cleans_up_on_failure(tmp_path: Path):
     dest = tmp_path / "sub" / "out.pdf"
     make_client(ok_handler).download_to_file(TOKEN, "d1", dest)
     assert dest.read_bytes() == b"PDFBYTES"
-    assert not list(dest.parent.glob(".dl-*.part"))  # no temp leftovers
+    assert not list(dest.parent.glob(".dl-*.part"))                     
 
     def missing_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(404, json={"detail": "Document not found"})
@@ -186,7 +187,7 @@ def test_describe_never_leaks_internals():
     assert "secret" not in describe_api_error(ApiError(500, "internal detail"))
 
 
-# --- AI assistant endpoints -------------------------------------------
+                                                                        
 
 
 def test_ai_status_ask_summarize_suggest_paths_and_bearer():
@@ -228,7 +229,7 @@ def test_ai_status_ask_summarize_suggest_paths_and_bearer():
     assert any(p.endswith("/ai/ask") for p in paths)
     assert any(p.endswith("/ai/summarize") for p in paths)
     assert any(p.endswith("/ai/suggest-filename") for p in paths)
-    # Bearer only in header, never URL; token never logged.
+                                                           
     for (_m, url, auth, body) in seen:
         assert TOKEN not in url
         assert auth == f"Bearer {TOKEN}"
@@ -275,7 +276,7 @@ def test_ai_methods_use_long_timeout_and_pass_it_per_request():
     seen_timeouts = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        # httpx stores per-request timeout overrides in request extensions.
+                                                                           
         seen_timeouts.append(request.extensions.get("timeout"))
         return httpx.Response(200, json={
             "configured": True, "provider": "openrouter", "model": "m",
@@ -288,6 +289,6 @@ def test_ai_methods_use_long_timeout_and_pass_it_per_request():
     assert timeout_ext is not None
     assert timeout_ext["connect"] == 5.0
     assert timeout_ext["read"] == 90.0
-    # A non-AI call on the same client keeps the client default (60 s read).
+                                                                            
     client.me(TOKEN)
     assert seen_timeouts[-1]["read"] == 60.0

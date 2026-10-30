@@ -1,3 +1,4 @@
+# desktop/tests/test_session.py: Tests for tests.
 """Session persistence tests: tmp paths only, no real %APPDATA% usage."""
 import json
 import time
@@ -27,7 +28,7 @@ def test_corrupt_file_returns_none_and_is_tolerated(tmp_path: Path):
     path = tmp_path / "session.json"
     path.write_text("{not json", encoding="utf-8")
     assert SessionStore(path).load() is None
-    # Corrupt but present file is left for the app to overwrite on next save.
+                                                                             
 
 
 def test_wrong_shape_returns_none(tmp_path: Path):
@@ -41,7 +42,7 @@ def test_expired_session_is_cleared(tmp_path: Path):
     store = SessionStore(path)
     store.save(make_session(ttl=-10))
     assert store.load() is None
-    assert not path.exists()  # cleared
+    assert not path.exists()           
 
 
 def test_clear_removes_file(tmp_path: Path):
@@ -49,7 +50,7 @@ def test_clear_removes_file(tmp_path: Path):
     store = SessionStore(path)
     store.save(make_session())
     store.clear()
-    store.clear()  # idempotent
+    store.clear()              
     assert not path.exists()
 
 

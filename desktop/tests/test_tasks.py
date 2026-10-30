@@ -1,3 +1,4 @@
+# desktop/tests/test_tasks.py: Tests for tests.
 """Background-task runner tests with a fake scheduler (no Tk, no threads UI)."""
 import threading
 
@@ -78,12 +79,12 @@ def test_single_in_flight_rejects_overlapping_submissions():
         finished.set()
 
     assert runner.submit(slow) is True
-    assert runner.submit(slow) is None  # rejected while busy
+    assert runner.submit(slow) is None                       
     release.set()
     wait_for(finished)
     scheduler.run_pending()
     assert runner.busy is False
-    # Accepts a new task after the previous one completed.
+                                                          
     done2 = threading.Event()
     assert runner.submit(lambda: done2.set()) is True
     wait_for(done2)
@@ -108,9 +109,9 @@ def test_pump_reschedules_while_worker_running():
         return "ok"
 
     runner.submit(work)
-    assert scheduler.calls  # initial pump scheduled
-    scheduler.run_pending()  # worker may not be done; pump must reschedule
+    assert scheduler.calls                          
+    scheduler.run_pending()                                                
     wait_for(finished)
-    scheduler.run_pending()  # delivers the result
+    scheduler.run_pending()                       
     assert runner.busy is False
     runner.shutdown()

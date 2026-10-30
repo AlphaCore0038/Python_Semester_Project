@@ -1,3 +1,4 @@
+# backend/app/routers/ai.py: FastAPI router for ai.
 """AI assistant endpoints - Cloud AI via OpenRouter (spec 6, 14, 16).
 
 Every endpoint requires a valid Bearer session token; documents are accessed
@@ -127,17 +128,17 @@ def _retrieve(
     if not docs:
         return [], [], False
 
-    # Filename overlap first (handles content/filename mismatch by weighting
-    # the name the user actually sees), then up to 8 recent candidates.
-    # list_documents already returns full user-scoped rows (same columns as
-    # get_document), so candidates are used directly - no per-candidate
-    # re-fetch.
+                                                                            
+                                                                       
+                                                                           
+                                                                       
+               
     named = sorted(docs, key=lambda d: -len(question_tokens & _tokens(d["filename"])))
     best: list[tuple[int, dict, str]] = []
     for row in named[:8]:
         try:
             data = storage.download_object(row["storage_path"])
-        except Exception:  # noqa: BLE001 - skip unreadable files
+        except Exception:                                        
             continue
         result = extract_text(row["filename"], row["file_type"], data)
         if not result.text:

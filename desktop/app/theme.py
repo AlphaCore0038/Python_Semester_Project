@@ -1,3 +1,4 @@
+# desktop/app/theme.py: Visual theme, fonts, and shared Tkinter styling.
 """Shared visual tokens and ttk styling for the desktop client."""
 from __future__ import annotations
 
@@ -7,10 +8,12 @@ from pathlib import Path
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from app.resource import asset_path, find_asset
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ASSETS = REPO_ROOT / "assets"
 
-# Palette shared with the Django client.
+                                        
 BG = "#050a16"
 BG_ALT = "#070f1f"
 SIDEBAR = "#070e1d"
@@ -45,7 +48,8 @@ def display(size: int, weight: str = "bold"):
 
 
 def asset(name: str) -> Path:
-    return ASSETS / name
+    """Resolve an asset name for source or packaged PyInstaller runs."""
+    return asset_path(name)
 
 
 def apply_theme(root: tk.Tk) -> None:
@@ -273,7 +277,7 @@ def apply_theme(root: tk.Tk) -> None:
 
 def load_logo(height: int) -> tk.PhotoImage:
     """Load the transparent PNG mark, scaled by integer subsampling."""
-    png = base64.b64encode(asset("document_lock_logo.png").read_bytes()).decode("ascii")
+    png = base64.b64encode(asset_path("document_lock_logo.png").read_bytes()).decode("ascii")
     image = tk.PhotoImage(data=png)
     factor = max(1, round(image.height() / height))
     if factor > 1:
@@ -283,8 +287,8 @@ def load_logo(height: int) -> tk.PhotoImage:
 
 def apply_window_icon(root: tk.Tk) -> None:
     """Set the Windows window/taskbar icon from the supplied logo."""
-    icon_path = asset("document_lock_logo.ico")
-    if icon_path.exists():
+    icon_path = find_asset("document_lock_logo.ico")
+    if icon_path is not None:
         try:
             root.iconbitmap(default=str(icon_path))
         except tk.TclError:
@@ -292,6 +296,6 @@ def apply_window_icon(root: tk.Tk) -> None:
     try:
         image = load_logo(48)
         root.iconphoto(True, image)
-        root._app_icon = image  # keep a reference alive
+        root._app_icon = image                          
     except tk.TclError:
         pass

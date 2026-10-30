@@ -1,3 +1,4 @@
+# desktop/app/views.py: Tkinter UI views and layout.
 """Tkinter views: login and the documents workspace.
 
 Views own widgets and user-facing messages only; HTTP lives in
@@ -93,9 +94,9 @@ def _center_on_parent(window: tk.Toplevel, parent: tk.Misc, width: int,
     window.geometry(f"{width}x{height}+{x}+{y}")
 
 
-# --------------------------------------------------------------------------
-# Login
-# --------------------------------------------------------------------------
+                                                                            
+       
+                                                                            
 
 class LoginView(tk.Frame):
     def __init__(self, parent, client, store, runner, on_authenticated):
@@ -122,10 +123,9 @@ class LoginView(tk.Frame):
         visual = tk.Frame(self, bg="#03080f")
         visual.grid(row=0, column=0, sticky="nsew")
 
+        gradient_path = theme.asset_path("gradient_auth.png")
         try:
-            self._gradient_photo = tk.PhotoImage(
-                file=str(theme.asset("gradient_auth.png"))
-            )
+            self._gradient_photo = tk.PhotoImage(file=str(gradient_path))
             backdrop = tk.Label(visual, image=self._gradient_photo, bd=0,
                                 bg="#03080f")
             backdrop.place(x=0, y=0)
@@ -276,9 +276,9 @@ class LoginView(tk.Frame):
         self.switch_btn.state([state])
 
 
-# --------------------------------------------------------------------------
-# Workspace
-# --------------------------------------------------------------------------
+                                                                            
+           
+                                                                            
 
 class MainView(tk.Frame):
     def __init__(self, parent, client, store, runner, session: Session,
@@ -301,7 +301,7 @@ class MainView(tk.Frame):
         self._build_workspace()
         self.after(100, self.refresh)
 
-    # ---- sidebar ------------------------------------------------------
+                                                                         
 
     def _build_sidebar(self):
         sidebar = tk.Frame(self, bg=theme.SIDEBAR, width=236)
@@ -388,7 +388,7 @@ class MainView(tk.Frame):
         button.pack(fill="x", pady=1)
         return button
 
-    # ---- workspace ----------------------------------------------------
+                                                                         
 
     def _build_workspace(self):
         work = tk.Frame(self, bg=theme.BG)
@@ -557,7 +557,7 @@ class MainView(tk.Frame):
                                    font=(theme.FONT, 9))
         self.status_label.pack(side="left")
 
-    # ---- helpers ------------------------------------------------------
+                                                                         
 
     def _set_nav_active(self, active: str):
         for key, button in self._nav_buttons.items():
@@ -625,7 +625,7 @@ class MainView(tk.Frame):
             return
         self._status(describe_api_error(exc), error=True)
 
-    # ---- data loading -------------------------------------------------
+                                                                         
 
     def refresh(self):
         if self.runner.busy:
@@ -698,7 +698,7 @@ class MainView(tk.Frame):
         self.progress.pack_forget()
         self._action_buttons(True)
 
-    # ---- operations ---------------------------------------------------
+                                                                         
 
     def _upload(self):
         if self.runner.busy:
@@ -933,7 +933,7 @@ class MainView(tk.Frame):
         self.runner.submit(work, on_success=ok, on_error=self._handle_error,
                            on_done=self._end)
 
-    # ---- AI assistant --------------------------------------------------
+                                                                          
 
     def _open_ai(self):
         if self.runner.busy:

@@ -1,3 +1,4 @@
+# backend/app/main.py: FastAPI application entry point and routers.
 """FastAPI application entry point."""
 
 from __future__ import annotations
@@ -13,14 +14,14 @@ from app.routers.ai import router as ai_router
 from app.routers.auth import router as auth_router
 from app.routers.documents import router as documents_router
 
-# Uvicorn configures only its own loggers, so application INFO records
-# (including the admin download audit trail) need a root handler.
+                                                                      
+                                                                 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Fail fast at startup with a clear, secret-safe message.
+                                                             
     load_settings()
     yield
 

@@ -1,3 +1,4 @@
+# desktop/locker.py: Desktop application entry point.
 """AI Digital Locker - Windows Tkinter desktop client.
 
 Launch (from desktop/):  py locker.py
@@ -57,7 +58,7 @@ class App:
         self._swap(build)
 
     def show_main(self, session):
-        if session is None:  # defensive: expired/cleared between save and load
+        if session is None:                                                    
             self.show_login()
             return
         self._swap(

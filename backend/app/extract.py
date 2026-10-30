@@ -1,3 +1,4 @@
+# backend/app/extract.py: Document extraction helpers.
 """Text extraction for AI context - TXT, PDF, and DOCX only.
 
 Honest by design: unsupported formats and unreadable files return a clear
@@ -13,7 +14,7 @@ from dataclasses import dataclass
 
 from pypdf import PdfReader
 
-# Hard cap on any single document's extracted text handed to retrieval.
+                                                                       
 MAX_EXTRACT_CHARS = 30_000
 MAX_PDF_PAGES = 30
 
@@ -23,7 +24,7 @@ _DOCX_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"
 @dataclass
 class ExtractionResult:
     text: str = ""
-    note: str = ""  # empty string means success
+    note: str = ""                              
 
 
 def _finalize(text: str) -> ExtractionResult:
@@ -34,8 +35,8 @@ def _finalize(text: str) -> ExtractionResult:
 
 
 def _from_text(data: bytes) -> ExtractionResult:
-    # utf-8-sig handles BOM; latin-1 never fails and is the honest last resort
-    # (a utf-16 attempt without BOM silently "succeeds" on random bytes).
+                                                                              
+                                                                         
     try:
         return _finalize(data.decode("utf-8-sig"))
     except UnicodeDecodeError:
@@ -82,7 +83,7 @@ def extract_text(filename: str, file_type: str, data: bytes) -> ExtractionResult
             or name.endswith(".docx")
         ):
             return _from_docx(data)
-    except Exception:  # noqa: BLE001 - corrupt/adversarial files must not 500
+    except Exception:                                                         
         return ExtractionResult(
             "",
             "The document could not be read (it may be corrupted or password-protected).",

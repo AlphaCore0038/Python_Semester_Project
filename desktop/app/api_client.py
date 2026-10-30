@@ -1,3 +1,4 @@
+# desktop/app/api_client.py: HTTP API client helpers.
 """HTTP client for the FastAPI backend (the only API the desktop uses).
 
 The backend is the sole source of truth for authentication, authorization,
@@ -14,14 +15,14 @@ from pathlib import Path
 
 import httpx
 
-# Exact backend 413 detail strings (verified against app/routers/documents.py).
+                                                                               
 DETAIL_TOO_LARGE = "File exceeds the maximum upload size"
 DETAIL_QUOTA = "Storage quota exceeded"
 
 DOWNLOAD_CHUNK = 64 * 1024
 
-# AI calls wait on the model; must not time out before the backend's own
-# OpenRouter read timeout (90 s). Ordinary operations keep the client default.
+                                                                        
+                                                                              
 AI_TIMEOUT = (5.0, 90.0)
 
 
@@ -99,7 +100,7 @@ class ApiClient:
             raise ApiError(0, "backend unreachable") from None
         return self._check(response)
 
-    # --- auth -----------------------------------------------------------
+                                                                          
 
     def register(self, email: str, password: str) -> dict:
         return self._handle(
@@ -119,7 +120,7 @@ class ApiClient:
         """Best effort: a slow or unreachable backend must not block logout."""
         self._handle("POST", "/auth/logout", token=token, timeout=(2.0, 2.0))
 
-    # --- documents ------------------------------------------------------
+                                                                          
 
     def list_documents(self, token: str, *, search: str = "", sort: str = "",
                        order: str = "", file_type: str = "") -> list[dict]:
@@ -182,7 +183,7 @@ class ApiClient:
     def delete(self, token: str, document_id: str) -> None:
         self._handle("DELETE", f"/documents/{document_id}", token=token)
 
-    # --- AI assistant ----------------------------------------------------
+                                                                           
 
     def ai_status(self, token: str) -> dict:
         return self._handle(

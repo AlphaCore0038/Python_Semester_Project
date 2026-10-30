@@ -1,3 +1,4 @@
+# backend/tests/test_documents.py: Tests for tests.
 """Documents API tests — in-memory fake DB and storage; no real Supabase."""
 
 from __future__ import annotations
@@ -171,7 +172,7 @@ def upload(
     )
 
 
-# --- upload ---
+                
 
 def test_upload_success(client: TestClient, world) -> None:
     users, docs, files = world
@@ -188,7 +189,7 @@ def test_upload_success(client: TestClient, world) -> None:
     path = f"{user['id']}/{body['id']}"
     assert path in files.objects
     assert files.objects[path] == (b"%PDF", "application/pdf")
-    # user_id and storage_path are not exposed in the response
+                                                              
     assert "storage_path" not in response.text
     assert user["id"] not in response.text
 
@@ -232,7 +233,7 @@ def test_upload_rejects_over_quota_with_trusted_sizes(
     )
     response = upload(client, token_for(user), content=b"x" * 21)
     assert response.status_code == 413
-    assert len(files.objects) == 0  # nothing new stored
+    assert len(files.objects) == 0                      
 
 
 def test_upload_allows_duplicate_filenames(client: TestClient, world) -> None:
@@ -285,11 +286,11 @@ def test_upload_insert_failure_triggers_compensating_delete(
     response = upload(client, token_for(user))
     assert response.status_code == 500
     assert docs.docs == {}
-    assert files.delete_calls  # compensating cleanup ran
-    assert files.objects == {}  # and removed the object
+    assert files.delete_calls                            
+    assert files.objects == {}                          
 
 
-# --- listing ---
+                 
 
 def test_list_isolates_users(client: TestClient, world) -> None:
     users, docs, _files = world
@@ -344,7 +345,7 @@ def test_list_requires_auth(client: TestClient) -> None:
     assert client.get("/documents").status_code == 401
 
 
-# --- usage ---
+               
 
 def test_usage_is_per_user(client: TestClient, world) -> None:
     users, docs, _files = world
@@ -367,7 +368,7 @@ def test_usage_is_per_user(client: TestClient, world) -> None:
     }
 
 
-# --- download ---
+                  
 
 def test_download_owner_gets_bytes(client: TestClient, world) -> None:
     users, _docs, _files = world
@@ -404,7 +405,7 @@ def test_download_foreign_owned_is_404(client: TestClient, world) -> None:
     assert response.status_code == 404
 
 
-# --- rename ---
+                
 
 def test_rename_updates_metadata_only(client: TestClient, world) -> None:
     users, _docs, files = world
@@ -418,7 +419,7 @@ def test_rename_updates_metadata_only(client: TestClient, world) -> None:
     )
     assert response.status_code == 200
     assert response.json()["filename"] == "Python_Internship_Certificate.pdf"
-    assert old_path in files.objects  # object never moved
+    assert old_path in files.objects                      
 
 
 def test_rename_foreign_is_404(client: TestClient, world) -> None:
@@ -445,7 +446,7 @@ def test_rename_rejects_invalid_filenames(
     assert response.status_code == 422
 
 
-# --- delete ---
+                
 
 def test_delete_removes_row_and_object(client: TestClient, world) -> None:
     users, docs, files = world
@@ -464,8 +465,8 @@ def test_delete_survives_storage_failure(client: TestClient, world) -> None:
     files.fail_delete = True
     response = client.delete(f"/documents/{created['id']}", headers=token_for(user))
     assert response.status_code == 204
-    assert created["id"] not in docs.docs  # metadata row is source of truth
-    assert files.delete_calls  # cleanup was attempted and logged
+    assert created["id"] not in docs.docs                                   
+    assert files.delete_calls                                    
 
 
 def test_delete_foreign_is_404(client: TestClient, world) -> None:
@@ -478,7 +479,7 @@ def test_delete_foreign_is_404(client: TestClient, world) -> None:
     ).status_code == 404
 
 
-# --- auth coverage for every route ---
+                                       
 
 @pytest.mark.parametrize(
     ("method", "path"),

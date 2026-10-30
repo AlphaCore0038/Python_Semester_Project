@@ -1,3 +1,4 @@
+# backend/tests/test_auth.py: Tests for tests.
 """Authentication tests — in-memory fake user/session store; no real Supabase."""
 
 from __future__ import annotations
@@ -132,14 +133,14 @@ def make_token(user: dict, ttl_seconds: int = 3600) -> str:
     return token
 
 
-# --- registration ---
+                      
 
 def test_register_success(client: TestClient, store: FakeUserStore) -> None:
     response = register(client, "Alice@Example.com", "correct-horse-1")
     assert response.status_code == 201
     body = response.json()
     assert set(body) == {"id", "email"}
-    assert body["email"] == "alice@example.com"  # normalized to lowercase
+    assert body["email"] == "alice@example.com"                           
     assert "password_hash" not in response.text
 
 
@@ -170,7 +171,7 @@ def test_register_rejects_password_over_72_utf8_bytes(
 def test_register_rejects_unicode_password_over_72_bytes(
     client: TestClient, store: FakeUserStore
 ) -> None:
-    # 40 * 2-byte chars = 80 UTF-8 bytes, but only 40 code points
+                                                                 
     response = register(client, "bob@example.com", "é" * 40)
     assert response.status_code == 422
     assert "72 bytes" in response.text
@@ -181,7 +182,7 @@ def test_register_accepts_unicode_password_within_72_bytes(
 ) -> None:
     response = register(client, "uni@example.com", "pässwörd✓-1")
     assert response.status_code == 201
-    # verify the stored hash validates the exact unicode password
+                                                                 
     user = store.get_user_by_email("uni@example.com")
     assert verify_password("pässwörd✓-1", user["password_hash"])
 
@@ -215,22 +216,22 @@ def test_register_rejects_invalid_email(client: TestClient, store: FakeUserStore
     assert register(client, "not-an-email", "correct-horse-1").status_code == 422
 
 
-# --- login ---
+               
 
 def test_login_success_returns_opaque_bearer_token(
     client: TestClient, store: FakeUserStore
 ) -> None:
     register(client, "alice@example.com", "correct-horse-1")
-    response = login(client, "ALICE@example.com", "correct-horse-1")  # casing tolerated
+    response = login(client, "ALICE@example.com", "correct-horse-1")                    
     assert response.status_code == 200
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["expires_in"] == 86400
     token = body["access_token"]
     assert token
-    assert "." not in token  # opaque, not a structured/signed token
+    assert "." not in token                                         
     assert "password" not in response.text
-    # Only the hash is stored, never the raw token.
+                                                   
     assert token not in store.sessions
     assert hash_session_token(token) in store.sessions
 
@@ -281,7 +282,7 @@ def test_legacy_bcrypt_login_rehashes_in_place(
     assert login(client, "legacy@example.com", "correct-horse-1").status_code == 200
 
 
-# --- protected endpoint ---
+                            
 
 def test_me_with_valid_token(client: TestClient, store: FakeUserStore) -> None:
     registered = register(client, "alice@example.com", "correct-horse-1").json()
@@ -324,7 +325,7 @@ def test_me_with_token_of_deleted_user_is_401(
 ) -> None:
     user = store.create_user("gone@example.com", hash_password("correct-horse-1"))
     token = make_token(user)
-    store.users.clear()  # user deleted after session issued
+    store.users.clear()                                     
     response = client.get("/auth/me", headers=auth_header(token))
     assert response.status_code == 401
 
@@ -332,7 +333,7 @@ def test_me_with_token_of_deleted_user_is_401(
 def test_legacy_signed_tokens_are_rejected(
     client: TestClient, store: FakeUserStore
 ) -> None:
-    # A previously issued signed token is just an unknown opaque token now.
+                                                                           
     legacy_token = (
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
         "eyJzdWIiOiJ4IiwiZW1haWwiOiJ4QHkuY29tIn0."
@@ -343,7 +344,7 @@ def test_legacy_signed_tokens_are_rejected(
     assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-# --- logout ---
+                
 
 def test_logout_revokes_current_session(
     client: TestClient, store: FakeUserStore
@@ -354,7 +355,7 @@ def test_logout_revokes_current_session(
     response = client.post("/auth/logout", headers=auth_header(token))
     assert response.status_code == 204
     assert client.get("/auth/me", headers=auth_header(token)).status_code == 401
-    # Idempotent: logging out again is still a no-op success.
+                                                             
     assert client.post("/auth/logout", headers=auth_header(token)).status_code == 204
 
 

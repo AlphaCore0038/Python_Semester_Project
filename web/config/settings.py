@@ -1,3 +1,4 @@
+# web/config/settings.py: Application settings configuration.
 """Django settings for the AI Digital Locker web client.
 
 Configuration comes from environment variables (web/.env, with the
@@ -16,8 +17,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
 
-load_dotenv(REPO_ROOT / ".env")  # FASTAPI_BASE_URL (shared, non-secret)
-load_dotenv(BASE_DIR / ".env")  # web/.env overrides repo root
+load_dotenv(REPO_ROOT / ".env")                                         
+load_dotenv(BASE_DIR / ".env")                                
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
@@ -88,13 +89,13 @@ DATABASES = {
     }
 }
 
-# Server-side sessions only: the FastAPI session token lives inside the
-# session record on disk, never in a client-readable cookie or in page HTML.
+                                                                       
+                                                                            
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-# Secure cookies require HTTPS. They default to on outside DEBUG and can be
-# overridden explicitly for unusual local HTTP setups with DEBUG=False.
+                                                                           
+                                                                       
 COOKIE_SECURE = _env_bool("COOKIE_SECURE", not DEBUG)
 SESSION_COOKIE_SECURE = COOKIE_SECURE
 CSRF_COOKIE_SECURE = COOKIE_SECURE
@@ -110,14 +111,14 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [REPO_ROOT / "assets"]
-# WhiteNoise serves collected files in production and the finders in DEBUG.
+                                                                           
 WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_AUTOREFRESH = DEBUG
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# FastAPI backend location (non-secret; see .env.example).
+                                                          
 FASTAPI_BASE_URL = os.environ.get("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
 
-# Mirrors the backend's MAX_UPLOAD_BYTES (50 MiB). FastAPI remains
-# authoritative; this is only a fast client-side pre-check for UX.
+                                                                  
+                                                                  
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024

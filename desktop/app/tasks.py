@@ -1,3 +1,4 @@
+# desktop/app/tasks.py: Background task runner helpers.
 """Background operations for Tkinter.
 
 Network and blocking file work runs in a small thread pool; results are
@@ -42,7 +43,7 @@ class TaskRunner:
         def work():
             try:
                 result = fn()
-            except Exception as exc:  # noqa: BLE001 - mapped by the UI layer
+            except Exception as exc:                                         
                 self._queue.put(("error", on_error, exc, on_done))
             else:
                 self._queue.put(("success", on_success, result, on_done))

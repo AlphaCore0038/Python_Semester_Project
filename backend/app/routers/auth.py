@@ -1,3 +1,4 @@
+# backend/app/routers/auth.py: FastAPI router for auth.
 """Authentication routes: register, login, current-user profile, logout."""
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from app.security import (
 
 router = APIRouter(tags=["auth"])
 
-# Lazily computed dummy hash so unknown-email logins take comparable time.
+                                                                          
 _DUMMY_HASH: str | None = None
 
 

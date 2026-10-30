@@ -1,3 +1,4 @@
+# backend/app/security.py: Security and password hashing helpers.
 """Password hashing (PBKDF2) and opaque session tokens."""
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ PBKDF2_SALT_BYTES = 16
 PBKDF2_DERIVED_KEY_BYTES = 32
 _BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 
-# The original bcrypt limit is retained as a project policy so registration
-# behavior does not change during the password-hash migration.
+                                                                           
+                                                              
 MAX_PASSWORD_BYTES = 72
 
 

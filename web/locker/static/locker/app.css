@@ -1,4 +1,5 @@
-/* AI Digital Locker - shared visual system */
+# web/locker/static/locker/app.css: app module.
+
 
 :root {
   color-scheme: dark;
@@ -153,9 +154,9 @@ code {
   padding: 0.1em 0.4em;
 }
 
-/* ------------------------------------------------------------------ */
-/* Buttons                                                             */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .btn {
   display: inline-flex;
@@ -256,9 +257,9 @@ code {
   color: #ffaab0;
 }
 
-/* ------------------------------------------------------------------ */
-/* Forms                                                               */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .field { display: flex; flex-direction: column; gap: 0.4rem; }
 .field > label,
@@ -338,9 +339,9 @@ textarea { min-height: 110px; resize: vertical; }
   margin-bottom: 1rem;
 }
 
-/* ------------------------------------------------------------------ */
-/* Messages                                                            */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .toast-stack {
   position: fixed;
@@ -369,9 +370,9 @@ textarea { min-height: 110px; resize: vertical; }
 .msg.error { border-color: rgba(242, 112, 122, 0.38); color: #ffb8bd; }
 .msg.warning, .msg.info { border-color: rgba(245, 185, 95, 0.35); color: #ffd9a3; }
 
-/* ------------------------------------------------------------------ */
-/* App shell                                                           */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .app-shell {
   display: grid;
@@ -561,9 +562,9 @@ textarea { min-height: 110px; resize: vertical; }
   padding: 2rem 2rem 4.5rem;
 }
 
-/* ------------------------------------------------------------------ */
-/* Page structure                                                      */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .page-head {
   display: flex;
@@ -599,7 +600,7 @@ textarea { min-height: 110px; resize: vertical; }
 .panel-head p { margin-top: 0.2rem; font-size: 0.82rem; color: var(--muted); }
 .panel-head.split { align-items: center; }
 
-/* Storage */
+
 .storage-card {
   position: relative;
   display: grid;
@@ -692,7 +693,7 @@ textarea { min-height: 110px; resize: vertical; }
 }
 .stat-tile span { display: block; font-size: 0.73rem; color: var(--muted); }
 
-/* Upload */
+
 .upload-panel { padding: 1.35rem; }
 .upload-form { display: grid; gap: 0.85rem; }
 .dropzone {
@@ -749,7 +750,7 @@ textarea { min-height: 110px; resize: vertical; }
 }
 .file-selected { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 
-/* Filters */
+
 .filter-bar {
   display: grid;
   grid-template-columns: minmax(200px, 1.6fr) repeat(3, minmax(130px, 0.7fr)) auto;
@@ -762,7 +763,7 @@ textarea { min-height: 110px; resize: vertical; }
 .filter-field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 .filter-actions { display: flex; gap: 0.45rem; }
 
-/* Tables */
+
 .table-wrap { overflow-x: auto; margin: 0 -0.35rem; }
 .doc-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
 .doc-table th {
@@ -844,7 +845,7 @@ textarea { min-height: 110px; resize: vertical; }
 
 .row-actions { display: flex; align-items: center; gap: 0.15rem; justify-content: flex-end; }
 
-/* Empty state */
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -870,9 +871,9 @@ textarea { min-height: 110px; resize: vertical; }
 .empty p { color: var(--muted); font-size: 0.85rem; }
 .empty .btn { margin-top: 0.6rem; }
 
-/* ------------------------------------------------------------------ */
-/* AI                                                                  */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .ai-status { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
 .ai-status-main { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
@@ -1002,9 +1003,9 @@ textarea { min-height: 110px; resize: vertical; }
 .suggestion-row span:first-child { width: 82px; flex: none; color: var(--faint); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 0.1rem; }
 .suggestion-row strong { color: var(--text); font-weight: 600; }
 
-/* ------------------------------------------------------------------ */
-/* Admin                                                               */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .stat-strip {
   display: grid;
@@ -1033,9 +1034,9 @@ textarea { min-height: 110px; resize: vertical; }
 }
 .badge.admin { border-color: rgba(143, 211, 255, 0.3); color: var(--ice); background: rgba(47, 107, 255, 0.1); }
 
-/* ------------------------------------------------------------------ */
-/* Dialogs                                                             */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .dialog-page {
   display: flex;
@@ -1075,7 +1076,7 @@ textarea { min-height: 110px; resize: vertical; }
 .dialog-actions { display: flex; gap: 0.55rem; justify-content: flex-end; flex-wrap: wrap; margin-top: 0.4rem; }
 .dialog strong { color: var(--text); }
 
-/* Floating AI launcher */
+
 .floating-ai {
   position: fixed;
   right: 1.5rem;
@@ -1105,9 +1106,9 @@ textarea { min-height: 110px; resize: vertical; }
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
-/* ------------------------------------------------------------------ */
-/* Authentication                                                      */
-/* ------------------------------------------------------------------ */
+
+
+
 
 .auth-shell {
   display: grid;
@@ -1216,9 +1217,9 @@ textarea { min-height: 110px; resize: vertical; }
 .auth-switch { margin-top: 1.35rem; font-size: 0.84rem; color: var(--muted); }
 .auth-switch a { font-weight: 600; }
 
-/* ------------------------------------------------------------------ */
-/* Responsive                                                          */
-/* ------------------------------------------------------------------ */
+
+
+
 
 @media (max-width: 1120px) {
   .filter-bar { grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(120px, 0.7fr)) auto; }

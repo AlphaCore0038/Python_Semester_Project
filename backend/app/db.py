@@ -1,3 +1,4 @@
+# backend/app/db.py: Database session helpers.
 """Thin users-table access via the server-side Supabase client (Phase 4).
 
 All functions run with the service-role key inside the backend only.
@@ -18,8 +19,8 @@ class DuplicateEmailError(Exception):
 
 
 def create_user(email: str, password_hash: str) -> dict:
-    # Only these two columns are ever sent: is_admin takes its DB default (false)
-    # and id/created_at are database-generated.
+                                                                                 
+                                               
     try:
         response = (
             get_supabase()
@@ -33,8 +34,8 @@ def create_user(email: str, password_hash: str) -> dict:
 
 
 def get_user_by_email(email: str) -> dict | None:
-    # Emails are canonicalized to lowercase by the API layer, matching the
-    # users_email_lower_key unique index.
+                                                                          
+                                         
     response = (
         get_supabase()
         .table("users")
@@ -69,7 +70,7 @@ def update_password_hash(user_id: str, password_hash: str) -> bool:
     return bool(response.data)
 
 
-# --- sessions (opaque database-backed tokens) ---
+                                                  
 
 _SESSION_COLUMNS = "token_hash, user_id, expires_at"
 
@@ -137,13 +138,13 @@ def list_users() -> list[dict]:
     return response.data or []
 
 
-# --- documents (Phase 5) ---
+                             
 
 _DOCUMENT_COLUMNS = (
     "id, user_id, filename, storage_path, file_type, file_size_bytes, created_at, updated_at"
 )
 
-# Allowlisted sort columns; never interpolate client input into query builders.
+                                                                               
 DOCUMENT_SORT_COLUMNS = frozenset({"created_at", "filename", "file_size_bytes"})
 
 

@@ -1,3 +1,4 @@
+# backend/app/ai_client.py: ai_client module.
 """OpenRouter chat client - Cloud AI (the only working AI option, spec 12).
 
 Server-side only: the OpenRouter key never leaves backend/.env. Responses
@@ -16,7 +17,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# (connect, read) - generous read for the model's always-on reasoning phase.
+                                                                            
 TIMEOUT = (5.0, 90.0)
 
 

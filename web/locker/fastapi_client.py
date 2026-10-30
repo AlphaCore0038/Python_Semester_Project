@@ -1,3 +1,4 @@
+# web/locker/fastapi_client.py: fastapi_client module.
 """Single point of contact between the Django web client and FastAPI.
 
 Every FastAPI call in the web client goes through this module. Django
@@ -8,11 +9,11 @@ is never rendered into HTML, URLs, or browser JavaScript.
 import requests
 from django.conf import settings
 
-# Requests timeout: (connect, read) seconds. Kept short so a dead backend
-# surfaces as a friendly message instead of a hung page.
+                                                                         
+                                                        
 TIMEOUT = (5, 15)
-# AI calls wait on the model; must not time out before the backend's own
-# OpenRouter read timeout (90 s).
+                                                                        
+                                 
 AI_TIMEOUT = (5, 90)
 
 

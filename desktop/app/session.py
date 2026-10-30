@@ -1,3 +1,4 @@
+# desktop/app/session.py: Session persistence helpers.
 """Persistent local login session for the desktop client.
 
 The FastAPI session token is stored at %APPDATA%\\AiDigitalLocker\\session.json
@@ -27,7 +28,7 @@ def default_session_path() -> Path:
 
 @dataclass
 class Session:
-    access_token: str = field(repr=False)  # never appears in logs/reprs
+    access_token: str = field(repr=False)                               
     email: str
     expires_at: float
 

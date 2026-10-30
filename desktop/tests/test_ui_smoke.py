@@ -1,3 +1,4 @@
+# desktop/tests/test_ui_smoke.py: Tests for tests.
 """UI construction smoke tests - widgets only, no network, no mainloop."""
 import time
 from types import SimpleNamespace
@@ -9,13 +10,13 @@ tk = pytest.importorskip("tkinter")
 try:
     _root = tk.Tk()
     _root.withdraw()
-except Exception:  # pragma: no cover - headless environments
+except Exception:                                            
     pytest.skip("No display available for Tkinter tests", allow_module_level=True)
 
-from app.api_client import ApiClient, ApiError  # noqa: E402
-from app.session import Session, SessionStore  # noqa: E402
-from app.tasks import TaskRunner  # noqa: E402
-from app.views import AIDialog, LoginView, MainView, format_size, format_timestamp  # noqa: E402
+from app.api_client import ApiClient, ApiError              
+from app.session import Session, SessionStore              
+from app.tasks import TaskRunner              
+from app.views import AIDialog, LoginView, MainView, format_size, format_timestamp              
 
 
 @pytest.fixture
@@ -85,8 +86,8 @@ def test_ai_dialog_constructs_with_local_placeholder(root, runner, tmp_path):
                       SessionStore(tmp_path / "s.json"), runner, session)
     root.update_idletasks()
     assert dialog.send_btn.winfo_exists()
-    assert dialog.apply_btn.instate(["disabled"])  # proposals require an explicit request
-    # Local AI is a visibly disabled placeholder, never a selectable mode.
+    assert dialog.apply_btn.instate(["disabled"])                                         
+                                                                          
     assert dialog.mode_var.get() == "ask"
     dialog.destroy()
     main.destroy()
@@ -105,7 +106,7 @@ def test_ai_suggestion_apply_confirm_cancel_and_refresh(root, runner, tmp_path, 
 
     dialog = main._open_ai()
     assert dialog is not None
-    assert callable(dialog.on_renamed)  # the exact Phase 8 bug: was "after#N"
+    assert callable(dialog.on_renamed)                                        
 
     class SyncRunner:
         busy = False
@@ -113,7 +114,7 @@ def test_ai_suggestion_apply_confirm_cancel_and_refresh(root, runner, tmp_path, 
         def submit(self, fn, on_success=None, on_error=None, on_done=None):
             try:
                 result = fn()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:                
                 if on_error:
                     on_error(exc)
             else:
@@ -135,20 +136,20 @@ def test_ai_suggestion_apply_confirm_cancel_and_refresh(root, runner, tmp_path, 
     dialog.client = FakeClient()
     dialog.runner = SyncRunner()
 
-    # Confirm path: rename invoked; success callback schedules refresh (no TypeError).
+                                                                                      
     monkeypatch.setattr(views_module.messagebox, "askyesno", lambda *a, **k: True)
     dialog._suggestion = {"doc_id": "d1", "data": {"suggested_filename": "better.txt"}}
-    dialog._apply_suggestion()  # ok() calls on_renamed() synchronously via SyncRunner
+    dialog._apply_suggestion()                                                        
     assert rename_calls == [("token", "d1", "better.txt")]
     assert dialog._suggestion is None
-    root.update()  # flush the after_idle-scheduled main.refresh
+    root.update()                                               
     assert refreshed == [True]
 
-    # Cancel path: nothing renamed, suggestion kept for another try.
+                                                                    
     monkeypatch.setattr(views_module.messagebox, "askyesno", lambda *a, **k: False)
     dialog._suggestion = {"doc_id": "d1", "data": {"suggested_filename": "other.txt"}}
     dialog._apply_suggestion()
-    assert rename_calls == [("token", "d1", "better.txt")]  # unchanged
+    assert rename_calls == [("token", "d1", "better.txt")]             
     assert dialog._suggestion is not None
 
     dialog.destroy()

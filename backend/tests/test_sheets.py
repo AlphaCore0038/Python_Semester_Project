@@ -1,3 +1,4 @@
+# backend/tests/test_sheets.py: Tests for tests.
 """Google Sheets reporting tests — mocked Google API client; no real calls.
 
 Sheets is a secondary reporting layer: every test here verifies metadata flow
@@ -210,7 +211,7 @@ def upload(
     )
 
 
-# --- row mapping ---
+                     
 
 
 def test_row_mapping_has_eight_columns():
@@ -227,10 +228,10 @@ def test_row_mapping_has_eight_columns():
         "doc-1",
         "alice@example.com",
         "report.pdf",
-        "application/pdf",
-        1234,
-        "2026-10-20T00:00:00+00:00",
-        "2026-10-21T00:00:00+00:00",
+        "PDF",
+        "1.21 KB",
+        "20 Oct 2026, 05:30 AM",
+        "21 Oct 2026, 05:30 AM",
         "Cloud",
     ]
     assert len(row) == 8
@@ -250,7 +251,7 @@ def test_row_missing_owner_email_degrades_gracefully():
     assert len(row) == 8
 
 
-# --- upload ---
+                
 
 
 def test_upload_creates_sheets_row(client, world, sheets_report):
@@ -269,9 +270,9 @@ def test_upload_creates_sheets_row(client, world, sheets_report):
     assert stored[0] == document_id
     assert stored[1] == "a@example.com"
     assert stored[2] == "report.pdf"
-    assert stored[3] == "application/pdf"
-    assert stored[4] == 4
-    # No document content or secrets in the payload.
+    assert stored[3] == "PDF"
+    assert stored[4] == "0.00 KB"
+                                                    
     assert b"%PDF" not in stored
     assert "correct-horse-1" not in str(stored)
 
@@ -293,7 +294,7 @@ def test_upload_works_without_sheets_configured(client, env):
         env.setattr(db, name, target)
     env.setattr(storage, "upload_object", FakeStorage().upload_object)
     user = make_user(users, "a@example.com")
-    # Sheets is not configured and not patched: the real client is a no-op.
+                                                                           
     response = upload(client, token_for(user), "report.pdf", b"%PDF", "application/pdf")
     assert response.status_code == 201
 
@@ -303,13 +304,13 @@ def test_upload_api_failure_does_not_break_upload(client, world, sheets_report):
     report = sheets_report
     report.fail = True
     user = make_user(users, "a@example.com")
-    # Sheets raises, but upload must still succeed.
+                                                   
     response = upload(client, token_for(user), "report.pdf", b"%PDF", "application/pdf")
     assert response.status_code == 201
     assert response.json()["id"] in docs.docs
 
 
-# --- rename ---
+                
 
 
 def test_rename_updates_existing_row_by_document_id(client, world, sheets_report):
@@ -326,13 +327,13 @@ def test_rename_updates_existing_row_by_document_id(client, world, sheets_report
         headers=token_for(user),
     )
     assert response.status_code == 200
-    # Exactly one upsert for upload, one upsert (update) for rename — no duplicate row.
+                                                                                       
     assert len(report.upsert_calls) == 2
     assert report.upsert_calls[1][0] == document_id
     assert report.rows[document_id][2] == "Python_Internship_Certificate.pdf"
 
 
-# --- delete ---
+                
 
 
 def test_delete_removes_sheets_row(client, world, sheets_report):
@@ -348,7 +349,7 @@ def test_delete_removes_sheets_row(client, world, sheets_report):
     assert document_id not in report.rows
 
 
-# --- duplicates and idempotency ---
+                                    
 
 
 def test_duplicate_filenames_remain_separate_rows(client, world, sheets_report):
@@ -370,15 +371,15 @@ def test_repeated_sync_is_idempotent(client, world, sheets_report):
     user = make_user(users, "a@example.com")
     created = upload(client, token_for(user), "notes.txt", b"x").json()
     document_id = created["id"]
-    # Report the same document twice.
+                                     
     row = docs.get_document(document_id, user["id"])
     sheets.sheets.report_document(row, user["email"])
     sheets.sheets.report_document(row, user["email"])
-    assert len(report.upsert_calls) == 3  # upload + 2 manual reports
-    assert list(report.rows) == [document_id]  # still one row
+    assert len(report.upsert_calls) == 3                             
+    assert list(report.rows) == [document_id]                 
 
 
-# --- authorization unchanged ---
+                                 
 
 
 def test_sheets_does_not_bypass_auth(client, env):
@@ -393,11 +394,11 @@ def test_sheets_does_not_bypass_auth(client, env):
     ):
         env.setattr(db, name, target)
     make_user(users, "a@example.com")
-    # No token -> still 401 even though Sheets would be a no-op.
+                                                                
     assert upload(client, {}, "report.pdf", b"x").status_code == 401
 
 
-# --- worksheet title handling ---
+                                  
 
 
 def _make_client_with_service(sheet_title: str, sheet_id: int = 1):
@@ -428,9 +429,83 @@ def _document_row(document_id: str = "d1") -> dict:
     }
 
 
+@pytest.mark.parametrize(
+    ("filename", "mime_type", "expected"),
+    [
+        ("photo.PNG", "application/octet-stream", "PNG"),
+        ("report.pdf", "text/plain", "PDF"),
+        ("notes", "text/plain", "TXT"),
+        ("image", "image/jpeg", "JPG"),
+        (
+            "contract",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "DOCX",
+        ),
+        ("payload", "application/octet-stream", "BIN"),
+        ("payload", "application/x-unknown", "FILE"),
+    ],
+)
+def test_file_type_prefers_filename_extension(
+    filename: str, mime_type: str, expected: str
+):
+    document = _document_row()
+    document["filename"] = filename
+    document["file_type"] = mime_type
+    assert sheets.SheetsClient._row(document, None)[3] == expected
+
+
+@pytest.mark.parametrize(
+    ("byte_count", "expected"),
+    [
+        (0, "0.00 KB"),
+        (4, "0.00 KB"),
+        (357_704, "349.32 KB"),
+        (1_000_000, "976.56 KB"),
+        (1_048_576, "1.00 MB"),
+        (2_569_011, "2.45 MB"),
+        (2_621_440, "2.50 MB"),
+        (None, "0.00 KB"),
+        ("not-a-number", "0.00 KB"),
+        (-1, "0.00 KB"),
+        (float("nan"), "0.00 KB"),
+        (float("inf"), "0.00 KB"),
+    ],
+)
+def test_file_size_is_formatted_in_binary_units(byte_count: object, expected: str):
+    document = _document_row()
+    document["file_size_bytes"] = byte_count
+    assert sheets.SheetsClient._row(document, None)[4] == expected
+
+
+def test_row_missing_file_size_degrades_gracefully():
+    document = _document_row()
+    document.pop("file_size_bytes")
+    assert sheets.SheetsClient._row(document, None)[4] == "0.00 KB"
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "2026-10-28T00:04:00+00:00",
+        "2026-10-28T00:04:00.987654Z",
+        "2026-10-28T05:34:00+05:30",
+        "2026-10-28T00:04:00",
+        datetime(2026, 10, 28, 0, 4, tzinfo=timezone.utc),
+        datetime(2026, 10, 28, 0, 4),
+    ],
+)
+def test_timestamps_are_formatted_in_ist(timestamp):
+    document = _document_row()
+    document["created_at"] = timestamp
+    document["updated_at"] = timestamp
+    row = sheets.SheetsClient._row(document, None)
+    assert row[5] == "28 Oct 2026, 05:34 AM"
+    assert row[6] == "28 Oct 2026, 05:34 AM"
+
+
 def test_non_default_worksheet_title_used_for_read_and_update():
     client, service = _make_client_with_service("My Reports", 7)
-    # Seed values so the existing document is found and updated in place.
+                                                                         
     service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
         "values": [
             ["Document ID", "User Email", "Filename", "File Type", "File Size", "Upload Time", "Last Modified", "Storage Mode"],
@@ -462,7 +537,7 @@ def test_apostrophe_in_worksheet_title_is_escaped():
 
 def test_delete_uses_discovered_sheet_id():
     client, service = _make_client_with_service("Reports", 42)
-    # Seed the sheet values so the row is found.
+                                                
     service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
         "values": [["d1", "a@example.com", "report.pdf", "application/pdf", 4, "t1", "t2", "Cloud"]]
     }
@@ -477,7 +552,7 @@ def test_empty_config_disables_reporting(env):
     env.setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
     config.get_settings.cache_clear()
     client = sheets.SheetsClient()
-    # Should not attempt any Google API initialization.
+                                                       
     client.report_document(_document_row(), "a@example.com")
     assert client._service is None
     assert client._spreadsheet_id is None
@@ -489,13 +564,13 @@ def test_init_failure_is_non_fatal(monkeypatch):
     monkeypatch.setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "creds.json")
     config.get_settings.cache_clear()
     client = sheets.SheetsClient()
-    # Pretend initialization completed but the service is broken.
+                                                                 
     client._initialized = True
     client._sheet_id = 1
     client._sheet_title = "Sheet1"
     broken_service = MagicMock()
     broken_service.spreadsheets.side_effect = Exception("boom")
     client._service = broken_service
-    # Must not raise; failure is logged and swallowed.
+                                                      
     client.report_document(_document_row(), "a@example.com")
     config.get_settings.cache_clear()

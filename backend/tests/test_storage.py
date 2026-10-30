@@ -1,3 +1,4 @@
+# backend/tests/test_storage.py: Tests for tests.
 """Regression tests for the Supabase Storage wrapper.
 
 The live bug: upload() was called with content_type=/upsert= kwargs, which
@@ -104,13 +105,13 @@ def test_real_sdk_request_carries_content_type_and_no_overwrite(monkeypatch):
     storage.upload_object("user-1/doc-1", b"%PDF", "application/pdf")
 
     req = captured["request"]
-    # Object key format preserved: /object/{bucket}/{user_id}/{document_id}
+                                                                           
     assert str(req.url).startswith(
         "http://supabase.test/storage/v1/object/documents/user-1/doc-1"
     )
-    # Non-overwrite semantics sent to the API.
+                                              
     assert req.headers.get("x-upsert") == "false"
-    # Multipart part content type is the caller's MIME type, not text/plain.
+                                                                            
     assert b"Content-Type: application/pdf" in req.content
-    # Private bucket: no query params like ?public=true anywhere.
+                                                                 
     assert "public" not in str(req.url)

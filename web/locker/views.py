@@ -1,3 +1,4 @@
+# web/locker/views.py: Tkinter UI views and layout.
 """Views for the Django web client.
 
 All application operations are proxied to FastAPI via
@@ -17,7 +18,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from . import fastapi_client
 from .forms import LoginForm, RegisterForm, RenameForm
 
-# FastAPI 413 detail strings (exact backend contract).
+                                                      
 DETAIL_TOO_LARGE = "File exceeds the maximum upload size"
 DETAIL_QUOTA = "Storage quota exceeded"
 
@@ -109,7 +110,7 @@ def register_view(request):
             else:
                 form.add_error(None, "Registration is unavailable right now. Please try again.")
         else:
-            # Registration succeeded: automatic login.
+                                                      
             return _start_session(
                 request,
                 form.cleaned_data["email"].strip().lower(),
@@ -135,8 +136,8 @@ def _start_session(request, email, password, success_note=None):
     request.session.cycle_key()
     request.session["api_token"] = data["access_token"]
     request.session["api_email"] = email
-    # Cosmetic only: shows the Admin nav link. FastAPI re-checks the
-    # database and returns 403 on every admin request regardless.
+                                                                    
+                                                                 
     try:
         profile = fastapi_client.me(data["access_token"])
     except fastapi_client.FastAPIError:
@@ -166,8 +167,8 @@ def login_view(request):
 def logout_view(request):
     token = request.session.get("api_token")
     if token:
-        # Revoke remotely, but local logout must still work if the backend
-        # is unreachable or the session already expired.
+                                                                          
+                                                        
         try:
             fastapi_client.logout(token)
         except fastapi_client.FastAPIError:
@@ -252,7 +253,7 @@ def upload(request):
     if uploaded is None:
         messages.error(request, "Choose a file to upload.")
         return redirect("locker:dashboard")
-    # UI convenience pre-check only; FastAPI enforces the real limit.
+                                                                     
     if uploaded.size > settings.MAX_UPLOAD_BYTES:
         messages.error(request, "That file is larger than the 50 MiB limit.")
         return redirect("locker:dashboard")

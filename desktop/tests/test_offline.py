@@ -1,3 +1,4 @@
+# desktop/tests/test_offline.py: Tests for tests.
 """Offline copy path tests (spec section 11: local copies only, no sync)."""
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def test_status_survives_cloud_rename(tmp_path: Path):
     target.parent.mkdir(parents=True)
     target.write_bytes(b"data")
     assert offline.has_copy("doc-1", root=tmp_path)
-    # A save under the new cloud name simply adds a second file.
+                                                                
     offline.copy_path("doc-1", "new-name.pdf", root=tmp_path).write_bytes(b"data")
     assert offline.has_copy("doc-1", root=tmp_path)
 

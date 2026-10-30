@@ -1,3 +1,4 @@
+# backend/tests/test_demo_drill.py: Tests for tests.
 """Demo traffic simulator tests — mocked HTTP client; no real calls.
 
 All tests use httpx.MockTransport to simulate the FastAPI backend.
@@ -60,7 +61,7 @@ def test_register_account_success():
     assert account.email.startswith("demo-drill-")
     assert account.email.endswith("@demo.ai-digital-locker.test")
     assert account.user_id == "u1"
-    assert account.token is None  # not logged in yet
+    assert account.token is None                     
 
 
 def test_register_account_duplicate_email():
@@ -145,7 +146,7 @@ def test_list_documents():
     assert account is not None
     assert driver._login_account(account) is True
     driver._upload_document(account)
-    driver._list_documents(account)  # Should not raise
+    driver._list_documents(account)                    
 
 
 def test_download_document():
@@ -162,7 +163,7 @@ def test_download_document():
     assert driver._login_account(account) is True
     doc_id = driver._upload_document(account)
     assert doc_id is not None
-    driver._download_document(account, doc_id)  # Should not raise
+    driver._download_document(account, doc_id)                    
 
 
 def test_rename_document():
@@ -179,7 +180,7 @@ def test_rename_document():
     assert driver._login_account(account) is True
     doc_id = driver._upload_document(account)
     assert doc_id is not None
-    driver._rename_document(account, doc_id)  # Should not raise
+    driver._rename_document(account, doc_id)                    
 
 
 def test_delete_document():
@@ -216,7 +217,7 @@ def test_delete_document_nonexistent():
     doc_id = driver._upload_document(account)
     assert doc_id is not None
     driver._delete_document(account, "nonexistent")
-    # The nonexistent doc was never in account.document_ids, so no change
+                                                                         
     assert doc_id in account.document_ids
 
 
@@ -273,8 +274,8 @@ def test_main_run_localhost_ok():
         result = main(["--run", "--base-url", "http://127.0.0.1:8000", "--user-count", "1", "--duration-seconds", "1"])
     finally:
         sys.stderr = old_stderr
-    # Will fail because no server is running, but should get past validation
-    assert result != 2  # Not the argument validation error
+                                                                            
+    assert result != 2                                     
 
 
 def test_user_count_validation():

@@ -1,3 +1,4 @@
+# web/locker/tests.py: Tests for locker.
 """Django web-client tests.
 
 All HTTP calls to FastAPI are mocked at `locker.fastapi_client.requests`;
@@ -51,8 +52,8 @@ class MockedAPITestCase(TestCase):
     def setUp(self):
         patcher = patch("locker.fastapi_client.requests")
         self.requests = patcher.start()
-        # Keep exception classes real so `except requests.RequestException`
-        # in fastapi_client works while the module is mocked.
+                                                                           
+                                                             
         self.requests.RequestException = real_requests.RequestException
         self.addCleanup(patcher.stop)
         self.routes = {}
@@ -119,7 +120,7 @@ class AuthFlowTests(MockedAPITestCase):
         self.assertEqual(resp.url, "/")
         self.assertNotEqual(self.client.session.session_key, key_before)
         self.assertEqual(self.client.session["api_token"], SESSION_TOKEN)
-        # register call normalized the email
+                                            
         method, url, kw = self.calls[0]
         self.assertEqual((method, url.endswith("/auth/register")), ("POST", True))
         self.assertEqual(kw["json"]["email"], "a@b.co")
@@ -203,11 +204,11 @@ class AuthFlowTests(MockedAPITestCase):
         resp = self.client.get(reverse("locker:dashboard"))
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(SESSION_TOKEN, resp.content.decode())
-        # The session cookie holds only the opaque session key, never the session token.
+                                                                                        
         session_cookie = self.client.cookies.get("sessionid")
         if session_cookie is not None:
             self.assertNotIn(SESSION_TOKEN, session_cookie.value)
-        # None of the backend calls put the token in a URL.
+                                                           
         for _m, url, _kw in self.calls:
             self.assertNotIn(SESSION_TOKEN, url)
 

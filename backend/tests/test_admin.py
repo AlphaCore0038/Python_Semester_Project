@@ -1,3 +1,4 @@
+# backend/tests/test_admin.py: Tests for tests.
 """Admin API tests — read-only endpoints, fake DB/storage, no live services."""
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from tests.test_documents import (
 
 @pytest.fixture()
 def env(monkeypatch: pytest.MonkeyPatch, tmp_path):
-    # Never read the real backend/.env in tests.
+                                                
     monkeypatch.setattr(config, "ENV_FILE", tmp_path / ".env")
     for name in (
         "SUPABASE_URL",
@@ -77,11 +78,11 @@ def client() -> TestClient:
 
 def make_admin(users: FakeUserStore, email: str = "admin@example.com") -> dict:
     user = make_user(users, email)
-    user["is_admin"] = True  # fake store keeps the row by reference
+    user["is_admin"] = True                                         
     return user
 
 
-# --- authorization ---
+                       
 
 
 def test_admin_routes_require_authentication(client: TestClient, world) -> None:
@@ -119,14 +120,14 @@ def test_admin_status_is_read_from_database_on_every_request(
 
     assert client.get("/admin/users", headers=headers).status_code == 200
 
-    admin["is_admin"] = False  # demotion applies immediately to the same session
+    admin["is_admin"] = False                                                    
     assert client.get("/admin/users", headers=headers).status_code == 403
 
     admin["is_admin"] = True
     assert client.get("/admin/users", headers=headers).status_code == 200
 
 
-# --- GET /admin/users ---
+                          
 
 
 def test_admin_users_returns_only_safe_fields(client: TestClient, world) -> None:
@@ -148,7 +149,7 @@ def test_admin_users_returns_only_safe_fields(client: TestClient, world) -> None
         assert "password_hash" not in row
 
 
-# --- GET /admin/documents ---
+                              
 
 
 def test_admin_documents_lists_all_owners_with_email(client: TestClient, world) -> None:
@@ -181,7 +182,7 @@ def test_admin_documents_owner_email_is_null_when_owner_row_is_missing(
     orphan = docs.create_document(
         {
             "id": str(uuid.uuid4()),
-            "user_id": str(uuid.uuid4()),  # no matching user row
+            "user_id": str(uuid.uuid4()),                        
             "filename": "orphan.txt",
             "storage_path": "missing/owner",
             "file_type": "text/plain",
@@ -195,7 +196,7 @@ def test_admin_documents_owner_email_is_null_when_owner_row_is_missing(
     assert response.json()[0]["owner_email"] is None
 
 
-# --- GET /admin/documents/{id} ---
+                                   
 
 
 def test_admin_download_returns_file_bytes(client: TestClient, world) -> None:
@@ -284,7 +285,7 @@ def test_failed_admin_download_does_not_write_success_audit_log(
     )
 
 
-# --- regression: user routes stay owner-scoped ---
+                                                   
 
 
 def test_normal_document_routes_remain_owner_scoped(client: TestClient, world) -> None:

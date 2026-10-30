@@ -1,3 +1,4 @@
+# backend/app/config.py: Backend URL configuration.
 """Application configuration for the AI Digital Locker backend.
 
 Reads backend/.env (never committed). Secret values are validated for
@@ -13,10 +14,10 @@ from pathlib import Path
 from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/app/config.py -> backend/.env
+                                       
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
-# Values copied verbatim from .env.example that mean "not configured yet".
+                                                                          
 _PLACEHOLDERS = {
     "SUPABASE_URL": "https://your-project-ref.supabase.co",
     "SUPABASE_SERVICE_ROLE_KEY": "your-service-role-key",
@@ -28,31 +29,31 @@ _PLACEHOLDERS = {
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
-    # Required (no defaults): missing/empty -> clear startup error.
+                                                                   
     supabase_url: str
     supabase_service_role_key: str = Field(min_length=1)
 
-    # Optional with defaults (per .env.example).
+                                                
     session_expiry_minutes: int = 1440
     admin_email: str = ""
     openrouter_api_key: str = ""
-    # MiniMax M3.1 Flash via OpenRouter's free route (verified 2026-10-19).
-    # No fallback model. The free route's availability is not guaranteed;
-    # provider failures surface as clear 503s, never silent switches.
+                                                                           
+                                                                         
+                                                                     
     openrouter_model: str = "minimax/minimax-m3.1-flash:free"
-    # Always-on reasoning models think before answering; "low" keeps latency
-    # acceptable for a chat UI. Override via OPENROUTER_REASONING_EFFORT.
+                                                                            
+                                                                         
     openrouter_reasoning_effort: str = "low"
     ai_max_output_tokens: int = 700
     ai_context_doc_chars: int = 8000
     ai_context_total_chars: int = 24000
     ai_summary_chars: int = 16000
     ai_suggest_chars: int = 4000
-    storage_quota_bytes: int = 524_288_000  # 500 MB per user (spec)
-    max_upload_bytes: int = 52_428_800  # 50 MB: Supabase Free per-file limit
+    storage_quota_bytes: int = 524_288_000                          
+    max_upload_bytes: int = 52_428_800                                       
 
-    # Optional Google Sheets reporting (spec §22/§23). Both default to empty so
-    # the backend starts and runs normally without Sheets configured.
+                                                                               
+                                                                     
     google_sheet_id: str = ""
     google_service_account_file: str = ""
 

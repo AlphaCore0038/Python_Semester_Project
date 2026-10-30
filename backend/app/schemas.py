@@ -1,3 +1,4 @@
+# backend/app/schemas.py: Request/response schema definitions.
 """Shared Pydantic request/response schemas (Phase 4: auth, Phase 5: documents)."""
 
 from __future__ import annotations
@@ -51,7 +52,7 @@ def sanitize_content_type(value: str | None) -> str:
 
 
 class RegisterRequest(BaseModel):
-    # extra fields (e.g. is_admin) are silently ignored, never honored
+                                                                      
     email: str
     password: str
 

@@ -1,3 +1,4 @@
+# backend/scripts/make_admin.py: Admin/seed utility script.
 """Owner-run administrator bootstrap (Phase 9, Milestone 1).
 
 Promotes the single existing account whose normalized email matches
@@ -18,13 +19,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Allow `python scripts/make_admin.py` from backend/ without installing the
-# app: put backend/ (the parent of scripts/) on sys.path.
+                                                                           
+                                                         
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app import db  # noqa: E402
-from app.config import load_settings  # noqa: E402
-from app.schemas import _normalize_email  # noqa: E402
+from app import db              
+from app.config import load_settings              
+from app.schemas import _normalize_email              
 
 
 def promote_admin(email: str) -> tuple[int, str]:
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         code, message = promote_admin(settings.admin_email)
-    except Exception as exc:  # noqa: BLE001 - report failure without secrets
+    except Exception as exc:                                                 
         print(f"Database error ({type(exc).__name__}); no change was made.")
         return 1
 

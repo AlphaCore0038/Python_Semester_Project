@@ -1,3 +1,4 @@
+# backend/app/routers/documents.py: FastAPI router for documents.
 """Authenticated document routes (Phase 5): upload, list, usage, download,
 rename, delete. Ownership always derives from the authenticated session user."""
 
@@ -41,7 +42,7 @@ def _to_response(row: dict) -> DocumentResponse:
 
 
 def _not_found() -> HTTPException:
-    # Indistinguishable for nonexistent and foreign-owned documents.
+                                                                    
     return HTTPException(status_code=404, detail="Document not found")
 
 
@@ -90,7 +91,7 @@ async def upload_document(
     data = await _read_upload_bounded(file, settings.max_upload_bytes)
 
     user_id = str(current_user["id"])
-    # Quota from trusted database metadata, never client-supplied sizes.
+                                                                        
     used_bytes, _count = db.sum_usage_and_count(user_id)
     if used_bytes + len(data) > settings.storage_quota_bytes:
         raise HTTPException(status_code=413, detail="Storage quota exceeded")
@@ -120,13 +121,13 @@ async def upload_document(
         try:
             storage.delete_object(storage_path)
         except Exception:
-            # Orphaned object possible; logged without credentials or contents.
+                                                                               
             logger.exception("Compensating storage cleanup failed")
         raise HTTPException(
             status_code=500, detail="Failed to save document metadata"
         ) from None
 
-    # Best-effort Sheets reporting: never fails a successful upload.
+                                                                    
     try:
         report_row = db.get_document_report_row(str(created["id"]), user_id)
         if report_row:
@@ -205,7 +206,7 @@ def rename_document(
     )
     if updated is None:
         raise _not_found()
-    # Best-effort Sheets reporting: update the row in place by Document ID.
+                                                                           
     try:
         report_row = db.get_document_report_row(
             str(updated["id"]), str(current_user["id"])
@@ -214,7 +215,7 @@ def rename_document(
             sheets.report_document(report_row, report_row.get("owner_email"))
     except Exception:
         logger.exception("Google Sheets reporting failed after rename")
-    # Metadata-only: the Storage object key {user_id}/{document_id} never changes.
+                                                                                  
     return _to_response(updated)
 
 
@@ -232,14 +233,14 @@ def delete_document(
         raise _not_found()
     if not db.delete_document(document_id, user_id):
         raise _not_found()
-    # Best-effort Sheets reporting: remove the registry row for the deleted doc.
+                                                                                
     try:
         sheets.delete_document_row(str(row["id"]))
     except Exception:
         logger.exception("Google Sheets reporting failed after delete")
-    # Best-effort object cleanup after the metadata row is gone (the row is
-    # the quota source of truth). A failure can leave an orphaned Storage
-    # object; logged without credentials or file contents.
+                                                                           
+                                                                         
+                                                          
     try:
         storage.delete_object(row["storage_path"])
     except Exception:

@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# backend/app/scripts/demo_drill.py: Admin/seed utility script.
+                      
 """AI Digital Locker - Demo Traffic Simulator.
 
 Generates realistic synthetic traffic against the FastAPI backend using only
@@ -30,13 +31,13 @@ DEFAULT_USER_COUNT = 8
 DEFAULT_DURATION_SECONDS = 300
 DEFAULT_MAX_UPLOADS_PER_USER = 5
 
-# Only localhost addresses are allowed without --allow-remote
+                                                             
 LOCALHOST_PATTERNS = ("127.0.0.1", "localhost", "localhost.localdomain")
 
 DEMO_EMAIL_DOMAIN = "demo.ai-digital-locker.test"
 DEMO_EMAIL_PREFIX = "demo-drill"
 
-# Synthetic document content templates
+                                      
 DOCUMENT_FILENAMES = [
     "demo-internship-certificate.pdf",
     "demo-project-report.pdf",
@@ -268,33 +269,33 @@ class DemoDriver:
 
     def run_user_session(self, account: DemoAccount) -> None:
         """Run a complete demo session for a single user."""
-        # Login
+               
         if not self._login_account(account):
             return
 
-        # Upload 1-3 documents
+                              
         num_uploads = self.rng.randint(1, min(3, self.max_uploads_per_user))
         for _ in range(num_uploads):
             self._upload_document(account)
             self._random_delay(0.5, 2.0)
 
-        # List documents
+                        
         self._list_documents(account)
         self._random_delay(0.5, 1.5)
 
-        # Download one document if we have any
+                                              
         if account.document_ids:
             doc_id = self.rng.choice(account.document_ids)
             self._download_document(account, doc_id)
             self._random_delay(0.5, 2.0)
 
-        # Rename one document if we have any
+                                            
         if account.document_ids:
             doc_id = self.rng.choice(account.document_ids)
             self._rename_document(account, doc_id)
             self._random_delay(0.5, 1.5)
 
-        # Delete one document if we have more than one
+                                                      
         if len(account.document_ids) > 1:
             doc_id = self.rng.choice(account.document_ids)
             self._delete_document(account, doc_id)
@@ -312,7 +313,7 @@ class DemoDriver:
         print(f"Seed:        {self.rng.random()}")
         print("=" * 60)
 
-        # Register and login all users
+                                      
         print("\n[Phase 1] Registering and logging in users...")
         for i in range(self.user_count):
             account = self._create_account()
@@ -329,7 +330,7 @@ class DemoDriver:
             print("\n[ERROR] No accounts were created. Aborting.")
             return
 
-        # Run user sessions
+                           
         print(f"\n[Phase 2] Running user sessions ({len(self.accounts)} users)...")
         for i, account in enumerate(self.accounts):
             print(f"  [User {i + 1}/{len(self.accounts)}] {account.email}")
@@ -420,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    # Validate base URL
+                       
     base_url = args.base_url
     if not _is_localhost(base_url) and not args.allow_remote:
         print(
@@ -430,7 +431,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    # Validate mode
+                   
     if args.cleanup and not args.run:
         print(
             "ERROR: --cleanup requires --run",
@@ -454,7 +455,7 @@ def main(argv: list[str] | None = None) -> int:
         print("  Run with --run to actually execute the demo")
         return 2
 
-    # Validate user count
+                         
     if args.user_count < 1 or args.user_count > 20:
         print("ERROR: User count must be between 1 and 20", file=sys.stderr)
         return 2

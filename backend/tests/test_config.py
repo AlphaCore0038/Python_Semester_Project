@@ -1,3 +1,4 @@
+# backend/tests/test_config.py: Tests for tests.
 """Configuration tests — use fake env values; never read the real backend/.env."""
 
 import pytest
@@ -18,9 +19,9 @@ def _clear_cached_settings() -> None:
 
 @pytest.fixture(autouse=True)
 def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path):
-    # Ensure the real .env is never read during tests: point the module's
-    # ENV_FILE at a nonexistent path so load_settings() falls back to
-    # process env only (OS vars are cleared below).
+                                                                         
+                                                                     
+                                                   
     monkeypatch.setattr(config, "ENV_FILE", tmp_path / ".env")
     for name in (
         "SUPABASE_URL",
@@ -41,8 +42,8 @@ def test_load_settings_with_valid_env(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = config.load_settings()
     assert settings.supabase_url == VALID_ENV["SUPABASE_URL"]
     assert settings.session_expiry_minutes == 1440
-    assert settings.storage_quota_bytes == 524_288_000  # 500 MB unchanged
-    assert settings.max_upload_bytes == 52_428_800  # 50 MB Supabase Free limit
+    assert settings.storage_quota_bytes == 524_288_000                    
+    assert settings.max_upload_bytes == 52_428_800                             
 
 
 def test_session_expiry_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,7 +61,7 @@ def test_missing_required_settings_raise_clear_error(
     message = str(excinfo.value)
     assert "SUPABASE_URL" in message
     assert "SUPABASE_SERVICE_ROLE_KEY" in message
-    # Secret-safe: no value-looking content from the environment is echoed.
+                                                                           
     assert "test-service-role-key" not in message
 
 

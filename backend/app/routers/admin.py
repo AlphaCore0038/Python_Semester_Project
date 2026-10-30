@@ -1,3 +1,4 @@
+# backend/app/routers/admin.py: FastAPI router for admin.
 """Read-only administrator routes (Phase 9, Milestone 2).
 
 Every route depends on require_admin, which re-reads users.is_admin from the
@@ -25,7 +26,7 @@ router = APIRouter(tags=["admin"])
 
 
 def _not_found() -> HTTPException:
-    # Same wording as the user-scoped document routes.
+                                                      
     return HTTPException(status_code=404, detail="Document not found")
 
 
@@ -44,7 +45,7 @@ def _to_admin_document(row: dict, owner_email: str | None) -> AdminDocumentRespo
 
 @router.get("/users", response_model=list[AdminUserResponse])
 def list_users(current_admin: dict = Depends(require_admin)) -> list[AdminUserResponse]:
-    # db.list_users selects only id, email, is_admin, created_at.
+                                                                 
     return [
         AdminUserResponse(
             id=str(user["id"]),
@@ -60,7 +61,7 @@ def list_users(current_admin: dict = Depends(require_admin)) -> list[AdminUserRe
 def list_documents(
     current_admin: dict = Depends(require_admin),
 ) -> list[AdminDocumentResponse]:
-    # One extra users query maps owner id -> email; no cross-request caching.
+                                                                             
     owners = {str(user["id"]): user["email"] for user in db.list_users()}
     return [
         _to_admin_document(row, owners.get(str(row["user_id"])))
@@ -88,7 +89,7 @@ def download_document(
             status_code=500, detail="Failed to download document"
         ) from None
 
-    # Audit only successful downloads: who accessed which document, when.
+                                                                         
     logger.info(
         "admin document download: admin_id=%s admin_email=%s "
         "document_id=%s owner_id=%s timestamp_utc=%s",

@@ -1,3 +1,4 @@
+# backend/app/sheets.py: Google Sheets formatting helpers.
 """Google Sheets reporting layer (Phase 11A).
 
 Administrative document registry/reporting layer per spec §22/§23.
@@ -18,13 +19,16 @@ causes a document operation (upload/rename/delete) to fail.
 from __future__ import annotations
 
 import logging
+import mimetypes
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# Column order per spec §22.
+                            
 COLUMNS: list[str] = [
     "Document ID",
     "User Email",
@@ -40,11 +44,70 @@ _STORAGE_MODE = "Cloud"
 _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _RANGE = "A:H"
 
+_KIBIBYTE = 1_024
+_MEBIBYTE = 1_048_576
+_IST = timezone(timedelta(hours=5, minutes=30), "IST")
+_MONTHS = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
+
+
+def _display_file_type(document: dict[str, Any]) -> str:
+    """Return an uppercase extension, falling back to the MIME type.
+
+    The filename is authoritative because clients may upload files with an
+    unhelpful MIME type such as application/octet-stream.
+    """
+    filename = str(document.get("filename") or "")
+    extension = Path(filename).suffix.lstrip(".").strip()
+    if extension:
+        return extension.upper()
+
+    mime_type = str(document.get("file_type") or "").split(";", 1)[0].strip()
+    guessed = mimetypes.guess_extension(mime_type) if mime_type else None
+    return guessed.lstrip(".").upper() if guessed else "FILE"
+
+
+def _display_size(value: Any) -> str:
+    """Format a byte count with binary units and two decimal places."""
+    try:
+        size = max(0, int(value))
+    except (TypeError, ValueError, OverflowError):
+        size = 0
+    if size < _MEBIBYTE:
+        return f"{size / _KIBIBYTE:.2f} KB"
+    return f"{size / _MEBIBYTE:.2f} MB"
+
+
+def _display_ist(value: Any) -> str:
+    """Format a timestamp as readable IST, treating naive values as UTC."""
+    if isinstance(value, datetime):
+        moment = value
+    else:
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        try:
+            moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return text
+
+    if moment.tzinfo is None or moment.utcoffset() is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(_IST)
+    hour = moment.hour % 12 or 12
+    period = "AM" if moment.hour < 12 else "PM"
+    return (
+        f"{moment.day:02d} {_MONTHS[moment.month - 1]} {moment.year:04d}, "
+        f"{hour:02d}:{moment.minute:02d} {period}"
+    )
+
 
 def _google_libraries_available() -> bool:
     try:
-        import googleapiclient.discovery  # noqa: F401
-        import google.oauth2.service_account  # noqa: F401
+        import googleapiclient.discovery              
+        import google.oauth2.service_account              
         return True
     except ImportError:
         return False
@@ -72,8 +135,8 @@ class SheetsClient:
     def __init__(self) -> None:
         self._service: Any = None
         self._spreadsheet_id: str | None = None
-        # Discovered from the spreadsheet during initialization. Defaults to
-        # "Sheet1" but is overwritten by the first worksheet's actual title.
+                                                                            
+                                                                            
         self._sheet_title: str = "Sheet1"
         self._sheet_id: int = 0
         self._initialized: bool = False
@@ -109,7 +172,7 @@ class SheetsClient:
             )
             self._spreadsheet_id = sheet_id
 
-            # Resolve the first sheet's sheetId for dimension operations.
+                                                                         
             sheet_meta = (
                 self._service.spreadsheets()
                 .get(
@@ -132,15 +195,15 @@ class SheetsClient:
     @staticmethod
     def _row(
         document: dict[str, Any], owner_email: str | None
-    ) -> list[str | int]:
+    ) -> list[str]:
         return [
             str(document["id"]),
             owner_email or "",
             str(document["filename"]),
-            str(document["file_type"]),
-            int(document["file_size_bytes"]),
-            str(document["created_at"]),
-            str(document["updated_at"]),
+            _display_file_type(document),
+            _display_size(document.get("file_size_bytes")),
+            _display_ist(document["created_at"]),
+            _display_ist(document["updated_at"]),
             _STORAGE_MODE,
         ]
 
@@ -183,7 +246,7 @@ class SheetsClient:
             return f"{quoted_title}!{_RANGE}"
         return f"{quoted_title}!{row}:{row}"
 
-    # --- Sheets API helpers ---
+                                
 
     def _values(self) -> list[list[Any]]:
         result = (
@@ -214,7 +277,7 @@ class SheetsClient:
         row = self._row(document, owner_email)
 
         if row_index is None:
-            # Append as a new data row (after the header).
+                                                          
             self._service.spreadsheets().values().append(
                 spreadsheetId=self._spreadsheet_id,
                 range=self._range_a1(),
@@ -223,7 +286,7 @@ class SheetsClient:
                 body={"values": [row]},
             ).execute()
         else:
-            # Update the existing row in place. values row i -> sheet row i+1.
+                                                                              
             spreadsheet_row = row_index + 1
             self._service.spreadsheets().values().update(
                 spreadsheetId=self._spreadsheet_id,
@@ -236,10 +299,10 @@ class SheetsClient:
         values = self._values()
         row_index = self._find_row_index(values, document_id)
         if row_index is None:
-            # Already absent; idempotent.
+                                         
             return
-        # values row i -> sheet row i+1; deleteDimension is 0-indexed with an
-        # exclusive end, so start=row_index, end=row_index+1.
+                                                                             
+                                                             
         self._service.spreadsheets().batchUpdate(
             spreadsheetId=self._spreadsheet_id,
             body={
