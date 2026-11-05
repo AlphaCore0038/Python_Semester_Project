@@ -6,6 +6,7 @@ All application operations are proxied to FastAPI via
 server-side session; it never renders the token into HTML, URLs, or
 JavaScript, and it never contacts Supabase directly.
 """
+import logging
 from datetime import datetime, timezone
 
 from django.conf import settings
@@ -17,6 +18,8 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from . import fastapi_client
 from .forms import LoginForm, RegisterForm, RenameForm
+
+logger = logging.getLogger(__name__)
 
                                                       
 DETAIL_TOO_LARGE = "File exceeds the maximum upload size"
@@ -106,8 +109,12 @@ def register_view(request):
             elif exc.status_code == 422:
                 form.add_error(None, "Please check your email and password.")
             elif exc.status_code == 0:
+                logger.warning("Registration backend unreachable")
                 form.add_error(None, "Cannot reach the service right now. Please try again.")
             else:
+                logger.error(
+                    "Registration backend failed with status %s", exc.status_code
+                )
                 form.add_error(None, "Registration is unavailable right now. Please try again.")
         else:
                                                       
@@ -126,6 +133,8 @@ def _start_session(request, email, password, success_note=None):
     try:
         data = fastapi_client.login(email, password)
     except fastapi_client.FastAPIError as exc:
+        if exc.status_code not in (0, 401):
+            logger.error("Login backend failed with status %s", exc.status_code)
         messages.error(
             request,
             "Cannot reach the service right now. Please try again."

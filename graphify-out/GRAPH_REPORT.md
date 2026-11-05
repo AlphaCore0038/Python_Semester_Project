@@ -1,16 +1,16 @@
 # Graph Report - PythonProject  (2026-10-30)
 
 ## Corpus Check
-- 84 files · ~248,483 words
+- 86 files · ~247,035 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1249 nodes · 2576 edges · 79 communities (55 shown, 17 thin omitted)
+- 1225 nodes · 2567 edges · 81 communities (57 shown, 16 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 51 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9cb74f9d`
+- Built from commit: `5314e716`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,7 +28,7 @@
 - graphify reference: commit hook and native CLAUDE.md integration
 - graphify reference: incremental update and cluster-only
 - extract_text
-- storage.py
+- test_storage.py
 - token_for
 - graphify.js
 - graphify reference: GitHub clone and cross-repo merge
@@ -45,9 +45,8 @@
 - locker/views.py
 - main.py
 - ApiClient
-- settings.py
-- Session
-- TaskRunner
+- AIDialog
+- App
 - SessionStore
 - MainView
 - documents.py
@@ -57,7 +56,7 @@
 - ai.py
 - test_sheets.py
 - test_admin_bootstrap.py
-- deps.py
+- auth.py
 - test_ui_smoke.py
 - admin.py
 - AITests
@@ -73,13 +72,13 @@
 - AI Digital Locker — Graphify Reference
 - AI Digital Locker — Implementation Status
 - tests.py
-- theme.py
+- asset_path
 - LoginView
 - DemoAccount
 - ._upload_document
 - _make_handler
 - scripts/__init__.py
-- ._status
+- TaskRunner
 - StaticAssetTests
 - Google Sheets reporting (Phase 11A)
 - Django web client
@@ -87,6 +86,8 @@
 - ServerHud
 - SheetsClient
 - hud_tee.py
+- make_admin.py
+- desktop/app/config.py
 
 ## God Nodes (most connected - your core abstractions)
 1. `token_for()` - 60 edges
@@ -115,7 +116,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (79 total, 17 thin omitted)
+## Communities (81 total, 16 thin omitted)
 
 ### Community 0 - "AI_Digital_Locker_Project_Specification(2).md"
 Cohesion: 0.08
@@ -146,8 +147,8 @@ Cohesion: 0.33
 Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
 
 ### Community 7 - "test_auth.py"
-Cohesion: 0.12
-Nodes (35): auth_header(), client(), FakeUserStore, login(), make_token(), fixture, MonkeyPatch, parametrize (+27 more)
+Cohesion: 0.13
+Nodes (34): auth_header(), client(), FakeUserStore, login(), make_token(), fixture, MonkeyPatch, parametrize (+26 more)
 
 ### Community 8 - "opencode.json"
 Cohesion: 0.50
@@ -166,20 +167,20 @@ Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
 ### Community 12 - "extract_text"
-Cohesion: 0.17
-Nodes (22): extract_text(), ExtractionResult, _finalize(), _from_docx(), _from_pdf(), _from_text(), Text extraction for AI context - TXT, PDF, and DOCX only. Honest by design:…, Best-effort text extraction; never raises for bad user files. (+14 more)
+Cohesion: 0.19
+Nodes (21): extract_text(), ExtractionResult, _finalize(), _from_docx(), _from_pdf(), _from_text(), Best-effort text extraction; never raises for bad user files., _encrypted_pdf() (+13 more)
 
-### Community 13 - "storage.py"
-Cohesion: 0.13
-Nodes (15): download_object(), Thin Supabase Storage wrapper for the private 'documents' bucket (Phase 5).…, upload_object(), FakeBucket, FakeStorage, FakeSupabase, Regression tests for the Supabase Storage wrapper. The live bug: upload() was…, The installed SDK must accept file_options and NOT content_type. (+7 more)
+### Community 13 - "test_storage.py"
+Cohesion: 0.16
+Nodes (12): upload_object(), FakeBucket, FakeStorage, FakeSupabase, The installed SDK must accept file_options and NOT content_type., upsert must be the string 'false' (TypedDict str); bool False is wrong., Drive the installed storage3 end-to-end with a mocked HTTP transport: the…, test_download_and_delete_use_expected_bucket_methods() (+4 more)
 
 ### Community 15 - "token_for"
-Cohesion: 0.06
-Nodes (93): client(), env(), make_admin(), fixture, MonkeyPatch, TestClient, Admin API tests — read-only endpoints, fake DB/storage, no live services., test_admin_documents_lists_all_owners_with_email() (+85 more)
+Cohesion: 0.07
+Nodes (90): client(), env(), make_admin(), fixture, MonkeyPatch, TestClient, test_admin_documents_lists_all_owners_with_email(), test_admin_documents_owner_email_is_null_when_owner_row_is_missing() (+82 more)
 
 ### Community 22 - "test_demo_drill.py"
-Cohesion: 0.11
-Nodes (26): _make_driver(), MonkeyPatch, Demo traffic simulator tests — mocked HTTP client; no real calls. All tests use…, Successful upload adds document to account's tracked list., Failed upload returns None and doesn't add document., Listing documents makes a GET request., Downloading a document owned by the account succeeds., Renaming a document owned by the account succeeds. (+18 more)
+Cohesion: 0.10
+Nodes (27): _make_driver(), MonkeyPatch, Successful upload adds document to account's tracked list., Failed upload returns None and doesn't add document., Listing documents makes a GET request., Downloading a document owned by the account succeeds., Renaming a document owned by the account succeeds., Deleting a document removes it from account's tracking. (+19 more)
 
 ### Community 23 - "12. AI Assistant"
 Cohesion: 0.40
@@ -203,79 +204,79 @@ Nodes (3): 5. Document Storage, Cloud Storage, Storage Limit
 
 ### Community 29 - "locker/views.py"
 Cohesion: 0.06
-Nodes (67): require_http_methods, require_POST, admin_documents(), admin_download(), admin_users(), ai_ask(), ai_status(), ai_suggest_filename() (+59 more)
+Nodes (65): require_http_methods, require_POST, admin_documents(), admin_download(), admin_users(), ai_ask(), ai_status(), ai_suggest_filename() (+57 more)
 
 ### Community 30 - "main.py"
-Cohesion: 0.25
-Nodes (6): health(), lifespan(), get, FastAPI application entry point., Health endpoint tests — no real .env or credentials required., FastAPI
+Cohesion: 0.33
+Nodes (4): health(), lifespan(), get, FastAPI
 
 ### Community 31 - "ApiClient"
 Cohesion: 0.08
-Nodes (32): BaseException, BaseTransport, ApiClient, ApiError, describe_api_error(), _error_detail(), Exception, Path (+24 more)
+Nodes (30): BaseException, BaseTransport, ApiClient, ApiError, describe_api_error(), _error_detail(), Exception, Path (+22 more)
 
-### Community 37 - "Session"
+### Community 37 - "AIDialog"
 Cohesion: 0.16
-Nodes (7): Session, AIDialog, Proposal only: confirm, then reuse the existing validated rename., Compact AI window. Local AI is a visibly disabled placeholder; suggestions are…, Constructing must not touch the network (refresh is deferred via after)., test_ai_dialog_constructs_with_local_placeholder(), test_main_view_constructs()
+Nodes (6): AIDialog, _center_on_parent(), Misc, Proposal only: confirm, then reuse the existing validated rename., Compact AI window. Local AI is a visibly disabled placeholder; suggestions are…, Toplevel
 
-### Community 38 - "TaskRunner"
-Cohesion: 0.06
-Nodes (37): base_url(), _base_url_from_env_file(), Backend URL configuration for the desktop client. FASTAPI_BASE_URL is read from…, copy_path(), dir_for(), has_copy(), offline_root(), Path (+29 more)
+### Community 38 - "App"
+Cohesion: 0.15
+Nodes (18): copy_path(), dir_for(), has_copy(), offline_root(), Path, App, _center(), main() (+10 more)
 
 ### Community 39 - "SessionStore"
-Cohesion: 0.22
-Nodes (16): default_session_path(), Path, Returns None for missing, corrupt, or expired sessions., SessionStore, make_session(), Path, Session persistence tests: tmp paths only, no real %APPDATA% usage., test_atomic_save_leaves_no_temp_files() (+8 more)
+Cohesion: 0.24
+Nodes (15): default_session_path(), Path, Returns None for missing, corrupt, or expired sessions., SessionStore, make_session(), Path, test_atomic_save_leaves_no_temp_files(), test_clear_removes_file() (+7 more)
 
 ### Community 40 - "MainView"
-Cohesion: 0.13
-Nodes (9): Button, _center_on_parent(), _label(), MainView, Misc, Spec section 11: optional local offline copy at upload time., Local validation mirrors the API rule (reject, never rewrite)., test_logout_revokes_remotely_and_always_clears_locally() (+1 more)
+Cohesion: 0.14
+Nodes (6): Button, _label(), MainView, Exception, Spec section 11: optional local offline copy at upload time., Local validation mirrors the API rule (reject, never rewrite).
 
 ### Community 41 - "documents.py"
-Cohesion: 0.16
-Nodes (23): create_document(), Trusted per-user usage from database metadata (never client-supplied)., sum_usage_and_count(), download_document(), list_documents(), _not_found(), get, HTTPException (+15 more)
+Cohesion: 0.21
+Nodes (19): delete_document(), download_document(), list_documents(), _not_found(), get, HTTPException, post, Response (+11 more)
 
 ### Community 42 - "schemas.py"
-Cohesion: 0.10
-Nodes (37): create_session(), delete_session(), get_user_by_email(), update_password_hash(), _dummy_hash(), login(), logout(), get (+29 more)
+Cohesion: 0.17
+Nodes (16): get, read_me(), AdminUserResponse, AIStatusResponse, AskRequest, AskResponse, LoginRequest, RegisterRequest (+8 more)
 
 ### Community 43 - "db.py"
-Cohesion: 0.13
-Nodes (23): create_user(), delete_document(), DuplicateEmailError, get_document(), get_document_admin(), get_document_report_row(), get_user_by_id(), list_documents() (+15 more)
+Cohesion: 0.11
+Nodes (29): create_document(), create_session(), create_user(), delete_document(), delete_session(), DuplicateEmailError, get_document(), get_document_admin() (+21 more)
 
 ### Community 44 - "load_settings"
-Cohesion: 0.14
-Nodes (21): load_settings(), _placeholder_fields(), Application configuration for the AI Digital Locker backend. Reads backend/.env…, Load and validate settings. Errors name variables, never their values., Settings, _normalize_email(), main(), promote_admin() (+13 more)
+Cohesion: 0.24
+Nodes (14): load_settings(), _placeholder_fields(), Load and validate settings. Errors name variables, never their values., Settings, _clear_cached_settings(), isolated_env(), fixture, MonkeyPatch (+6 more)
 
 ### Community 46 - "ai.py"
 Cohesion: 0.15
-Nodes (27): chat(), ProviderError, Exception, OpenRouter chat client - Cloud AI (the only working AI option, spec 12).…, Provider unavailable/busy/malformed. Messages are always safe to show., One-shot completion. Returns the assistant text or raises ProviderError., _unavailable(), get_settings() (+19 more)
+Nodes (27): chat(), ProviderError, Exception, Provider unavailable/busy/malformed. Messages are always safe to show., One-shot completion. Returns the assistant text or raises ProviderError., _unavailable(), get_settings(), ai_ask() (+19 more)
 
 ### Community 47 - "test_sheets.py"
-Cohesion: 0.07
-Nodes (36): client(), _document_row(), env(), FakeDocStore, FakeSheets, FakeStorage, _make_client_with_service(), make_user() (+28 more)
+Cohesion: 0.08
+Nodes (35): client(), _document_row(), env(), FakeDocStore, FakeSheets, FakeStorage, _make_client_with_service(), make_user() (+27 more)
 
 ### Community 48 - "test_admin_bootstrap.py"
 Cohesion: 0.16
 Nodes (11): fake_db(), fixture, MonkeyPatch, Admin bootstrap script tests — all database access is faked., test_existing_admin_is_an_idempotent_noop(), test_failed_update_is_not_reported_as_success(), test_main_rejects_arguments_without_loading_settings(), test_main_reports_configuration_errors_safely() (+3 more)
 
-### Community 49 - "deps.py"
-Cohesion: 0.32
-Nodes (7): get_session(), get_current_user(), HTTPException, Authentication dependency: validates the Bearer session token and resolves the…, Administrator gate. Admin status comes from the fresh per-request database row…, require_admin(), _unauthorized()
+### Community 49 - "auth.py"
+Cohesion: 0.17
+Nodes (21): get_user_by_email(), get_current_user(), HTTPException, Authentication dependency: validates the Bearer session token and resolves the…, Administrator gate. Admin status comes from the fresh per-request database row…, require_admin(), _unauthorized(), _dummy_hash() (+13 more)
 
 ### Community 50 - "test_ui_smoke.py"
-Cohesion: 0.18
-Nodes (12): Persistent local login session for the desktop client. The FastAPI session…, format_size(), format_timestamp(), format_type(), Tkinter views: login and the documents workspace. Views own widgets and user-…, fixture, UI construction smoke tests - widgets only, no network, no mainloop., Regression: on_renamed must be a callable (was a Tk after-id string),… (+4 more)
+Cohesion: 0.15
+Nodes (14): Session, format_size(), format_timestamp(), format_type(), fixture, Constructing must not touch the network (refresh is deferred via after)., Regression: on_renamed must be a callable (was a Tk after-id string),…, root() (+6 more)
 
 ### Community 51 - "admin.py"
-Cohesion: 0.24
-Nodes (13): list_users(), Admin listing only; selects non-secret columns in registration order., download_document(), list_documents(), list_users(), _not_found(), get, HTTPException (+5 more)
+Cohesion: 0.27
+Nodes (11): download_document(), list_documents(), list_users(), _not_found(), get, HTTPException, Response, _to_admin_document() (+3 more)
 
 ### Community 56 - "DemoDriver"
 Cohesion: 0.13
-Nodes (12): DemoDriver, Register a new demo account via the public API., Log in and obtain session token., List documents for the given account., Download a document owned by the given account., Rename a document owned by the given account., Delete a document owned by the given account., Sleep for a random duration. (+4 more)
+Nodes (12): DemoDriver, Orchestrates the demo traffic simulation., Register a new demo account via the public API., Log in and obtain session token., List documents for the given account., Download a document owned by the given account., Rename a document owned by the given account., Delete a document owned by the given account. (+4 more)
 
 ### Community 57 - "main"
-Cohesion: 0.12
-Nodes (17): _is_localhost(), main(), Check if the URL points to a localhost address., Running without --run or --dry-run exits with code 2., Running with --dry-run exits 0 and makes no network calls., Running with a non-localhost URL without --allow-remote exits 2., Running with localhost URL passes validation., User count must be between 1 and 20. (+9 more)
+Cohesion: 0.13
+Nodes (15): _is_localhost(), main(), Check if the URL points to a localhost address., Running without --run or --dry-run exits with code 2., Running with --dry-run exits 0 and makes no network calls., Running with a non-localhost URL without --allow-remote exits 2., Running with localhost URL passes validation., User count must be between 1 and 20. (+7 more)
 
 ### Community 58 - "AI Digital Locker — Architecture Map"
 Cohesion: 0.20
@@ -298,12 +299,12 @@ Cohesion: 0.29
 Nodes (6): AI Digital Locker — Graphify Reference, Artifacts, Limitations, Local generation baseline, Navigation commands, Safe refresh procedure
 
 ### Community 64 - "tests.py"
-Cohesion: 0.14
-Nodes (9): patch, TestCase, ErrorDetailTests, make_response(), MockedAPITestCase, Django web-client tests. All HTTP calls to FastAPI are mocked at…, Base: patches locker.fastapi_client.requests with a route table., FastAPI 422 returns detail as a list; the client must not crash. (+1 more)
+Cohesion: 0.15
+Nodes (9): patch, TestCase, CsrfTests, ErrorDetailTests, make_response(), MockedAPITestCase, Base: patches locker.fastapi_client.requests with a route table., FastAPI 422 returns detail as a list; the client must not crash. (+1 more)
 
-### Community 65 - "theme.py"
-Cohesion: 0.21
-Nodes (12): apply_theme(), apply_window_icon(), asset(), display(), load_logo(), Path, Tk, Shared visual tokens and ttk styling for the desktop client. (+4 more)
+### Community 65 - "asset_path"
+Cohesion: 0.12
+Nodes (26): asset_path(), find_asset(), _meipass(), Path, Return the PyInstaller extraction directory when packaged, else None., Return the first existing path for an asset name, or None., Return the path for a required asset, or raise FileNotFoundError., apply_theme() (+18 more)
 
 ### Community 67 - "DemoAccount"
 Cohesion: 0.25
@@ -313,9 +314,13 @@ Nodes (6): DemoAccount, Represents a demo user account with its session token., 
 Cohesion: 0.67
 Nodes (3): _make_handler(), Build an httpx.MockTransport handler from a route table. routes maps (method,…, MockTransport
 
+### Community 71 - "TaskRunner"
+Cohesion: 0.16
+Nodes (11): Runs fn() in a worker thread. Callbacks run on the main thread. Returns True if…, TaskRunner, FakeScheduler, Stands in for Tk root.after: records callbacks, test runs them., test_error_callback_receives_exception_and_done_always_runs(), test_pump_reschedules_while_worker_running(), test_shutdown_rejects_new_work(), test_single_in_flight_rejects_overlapping_submissions() (+3 more)
+
 ### Community 72 - "StaticAssetTests"
 Cohesion: 0.18
-Nodes (6): Client, override_settings, CsrfTests, A real token extracted from the rendered page must pass the middleware., Static assets must be discoverable, served, and present after collectstatic., StaticAssetTests
+Nodes (5): Client, override_settings, A real token extracted from the rendered page must pass the middleware., Static assets must be discoverable, served, and present after collectstatic., StaticAssetTests
 
 ### Community 73 - "Google Sheets reporting (Phase 11A)"
 Cohesion: 0.40
@@ -331,26 +336,30 @@ Nodes (4): Demo runbook (Phase 10), Demonstration checklist, Phase 10 verificati
 
 ### Community 76 - "ServerHud"
 Cohesion: 0.06
-Nodes (35): build_command(), build_launcher(), _cmd_quote(), default_data_dir(), default_settings(), main(), port_is_open(), Misc (+27 more)
+Nodes (34): build_command(), build_launcher(), _cmd_quote(), default_data_dir(), default_settings(), main(), port_is_open(), Misc (+26 more)
 
 ### Community 77 - "SheetsClient"
 Cohesion: 0.08
-Nodes (27): Any, _display_file_type(), _display_ist(), _display_size(), _google_libraries_available(), _quote_sheet_title(), Google Sheets reporting layer (Phase 11A). Administrative document…, Quote a worksheet title for use in Google Sheets A1 notation. Sheet names… (+19 more)
+Nodes (25): Any, _display_file_type(), _display_ist(), _display_size(), _google_libraries_available(), _quote_sheet_title(), Quote a worksheet title for use in Google Sheets A1 notation. Sheet names…, Best-effort Google Sheets reporting client. All failures are logged and… (+17 more)
+
+### Community 79 - "make_admin.py"
+Cohesion: 0.60
+Nodes (4): _normalize_email(), main(), promote_admin(), Promote the existing account matching *email*; returns (exit code, message).
 
 ## Knowledge Gaps
 - **138 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `Usage`, `What graphify is for`, `Step 0 - GitHub repos and multi-path merge (only if a URL or several paths)` (+133 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 449 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **17 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 414 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MockedAPITestCase` connect `tests.py` to `._seed_session`, `StaticAssetTests`, `AITests`, `AdminTests`, `AuthFlowTests`, `._api_doc_calls`?**
-  _High betweenness centrality (0.244) - this node is a cross-community bridge._
+- **Why does `MockedAPITestCase` connect `tests.py` to `._seed_session`, `AITests`, `AdminTests`, `AuthFlowTests`, `._api_doc_calls`?**
+  _High betweenness centrality (0.274) - this node is a cross-community bridge._
 - **Why does `ServerConfig` connect `ServerHud` to `tests.py`?**
-  _High betweenness centrality (0.244) - this node is a cross-community bridge._
+  _High betweenness centrality (0.269) - this node is a cross-community bridge._
 - **Why does `rename_document()` connect `documents.py` to `tests.py`, `db.py`?**
-  _High betweenness centrality (0.130) - this node is a cross-community bridge._
+  _High betweenness centrality (0.137) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `FakeUserStore` (e.g. with `make_admin()` and `world()`) actually correct?**
   _`FakeUserStore` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `MainView` (e.g. with `ApiError` and `Session`) actually correct?**

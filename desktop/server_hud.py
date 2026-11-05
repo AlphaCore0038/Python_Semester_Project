@@ -20,7 +20,7 @@ from app import theme
 APP_NAME = "PyServerHUD"
 WINDOW_TITLE = "PyServer HUD"
 HOST = "127.0.0.1"
-PORTS = {"django": 8000, "fastapi": 8001}
+PORTS = {"django": 8001, "fastapi": 8000}
 DEFAULT_ASGI_TARGET = "main:app"
 CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)

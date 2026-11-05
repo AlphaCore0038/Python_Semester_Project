@@ -87,12 +87,12 @@ def test_settings_round_trip_and_corrupt_file_falls_back(tmp_path):
 def test_commands_use_required_ports_and_asgi_target(tmp_path):
     django = ServerConfig("django", tmp_path, Path(sys.executable))
     fastapi = ServerConfig("fastapi", tmp_path, Path(sys.executable), "app.main:app")
-    assert build_command(django)[-1] == "127.0.0.1:8000"
+    assert build_command(django)[-1] == "127.0.0.1:8001"
     assert "manage.py" in build_command(django)
-    assert build_command(fastapi)[-1] == "8001"
+    assert build_command(fastapi)[-1] == "8000"
     assert "app.main:app" in build_command(fastapi)
-    assert django.url == "http://127.0.0.1:8000"
-    assert fastapi.url == "http://127.0.0.1:8001"
+    assert django.url == "http://127.0.0.1:8001"
+    assert fastapi.url == "http://127.0.0.1:8000"
 
 
 def test_validation_rejects_missing_project_and_bad_target(tmp_path):
@@ -133,12 +133,12 @@ def test_hud_constructs_switches_frameworks_and_persists(tmp_path):
         "hud.update_idletasks()\n"
         "assert hud.title() == 'PyServer HUD'\n"
         "assert hud.framework == 'django'\n"
-        "assert hud.url_var.get() == 'http://127.0.0.1:8000'\n"
+        "assert hud.url_var.get() == 'http://127.0.0.1:8001'\n"
         "assert hud.start_button._enabled\n"
         "assert not hud.stop_button._enabled\n"
         "hud._select_framework('fastapi')\n"
         "assert hud.framework == 'fastapi'\n"
-        "assert hud.url_var.get() == 'http://127.0.0.1:8001'\n"
+        "assert hud.url_var.get() == 'http://127.0.0.1:8000'\n"
         "assert hud.docs_button.winfo_manager() == 'grid'\n"
         "hud._select_framework('django')\n"
         "assert hud.framework == 'django'\n"
@@ -223,7 +223,7 @@ def test_tab_switching_keeps_server_states_independent(tmp_path):
         "assert fastapi_with_django_running['start'] is True\n"
         "assert fastapi_with_django_running['stop'] is False\n"
         "assert fastapi_with_django_running['fields'] == 'normal'\n"
-        "assert fastapi_with_django_running['url'].endswith(':8001')\n"
+        "assert fastapi_with_django_running['url'].endswith(':8000')\n"
         "assert hud.controllers['django'].running is True\n"
         "assert hud.controllers['fastapi'].running is False\n"
         "\n"

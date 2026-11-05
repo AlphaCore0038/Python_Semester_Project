@@ -136,6 +136,18 @@ class AuthFlowTests(MockedAPITestCase):
         self.assertContains(resp, "already exists")
         self.assertNotIn("api_token", self.client.session)
 
+    def test_register_unexpected_backend_status_is_logged_without_secrets(self):
+        self.route("POST", "/auth/register", status=404,
+                   json_data={"detail": "Not Found"})
+        with self.assertLogs("locker.views", level="ERROR") as logs:
+            resp = self.client.post(
+                reverse("locker:register"),
+                {"email": "a@b.co", "password": "password123"},
+            )
+        self.assertContains(resp, "Registration is unavailable")
+        self.assertIn("404", logs.output[0])
+        self.assertNotIn("password123", logs.output[0])
+
     def test_login_rotates_session_key(self):
         s = self.client.session
         s["probe"] = "1"
