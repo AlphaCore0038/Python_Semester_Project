@@ -56,7 +56,6 @@ backend/test-locker.txt
 backend/phase8-*.txt
 
 # Generated knowledge-graph artifacts
-graphify-out
-graphify-out
+graphify-out/
 
 .opencode
