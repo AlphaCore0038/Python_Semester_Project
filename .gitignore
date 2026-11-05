@@ -57,3 +57,5 @@ backend/phase8-*.txt
 
 # Generated knowledge-graph artifacts
 graphify-out/
+
+.opencode
