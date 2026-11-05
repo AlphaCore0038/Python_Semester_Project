@@ -10,7 +10,6 @@ import sys
 import time
 import webbrowser
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
 import tkinter as tk
@@ -21,7 +20,7 @@ from app import theme
 APP_NAME = "PyServerHUD"
 WINDOW_TITLE = "PyServer HUD"
 HOST = "127.0.0.1"
-PORTS = {"django": 8000, "fastapi": 8001}
+PORTS = {"django": 8001, "fastapi": 8000}
 DEFAULT_ASGI_TARGET = "main:app"
 CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -197,11 +196,10 @@ def build_launcher(
 class ServerProcess:
     def __init__(self, data_dir: Path | None = None, show_console: bool = True):
         self.data_dir = Path(data_dir) if data_dir is not None else default_data_dir()
-        self.launcher_path = self.data_dir / ("run_server.cmd" if os.name == "nt" else "run_server.sh")
+        self.launcher_path = self.data_dir / "run_server.cmd"
         self.log_path = self.data_dir / "server.log"
         self.show_console = show_console
         self._process: subprocess.Popen | None = None
-        self._log_handle = None
 
     @property
     def process(self) -> subprocess.Popen | None:
@@ -219,40 +217,23 @@ class ServerProcess:
             raise RuntimeError("A server is already running.")
         self._process = None
         self.data_dir.mkdir(parents=True, exist_ok=True)
-
-        if os.name == "nt":
-            self.launcher_path.write_text(
-                build_launcher(
-                    command,
-                    project_dir,
-                    label,
-                    self.log_path,
-                    Path(__file__).with_name("hud_tee.py"),
-                ),
-                encoding="utf-8",
-                newline="",
-            )
-            flags = CREATE_NEW_CONSOLE if self.show_console else CREATE_NO_WINDOW
-            comspec = os.environ.get("COMSPEC", "cmd.exe")
-            self._process = subprocess.Popen(
-                [comspec, "/c", "call", str(self.launcher_path)],
-                cwd=str(project_dir),
-                creationflags=flags,
-            )
-            return
-
-        self.log_path.write_text(
-            f"PyServer HUD log - {datetime.now():%Y-%m-%d %H:%M:%S}\n",
+        self.launcher_path.write_text(
+            build_launcher(
+                command,
+                project_dir,
+                label,
+                self.log_path,
+                Path(__file__).with_name("hud_tee.py"),
+            ),
             encoding="utf-8",
+            newline="",
         )
-        self._log_handle = self.log_path.open("ab")
+        flags = CREATE_NEW_CONSOLE if self.show_console else CREATE_NO_WINDOW
+        comspec = os.environ.get("COMSPEC", "cmd.exe")
         self._process = subprocess.Popen(
-            command,
+            [comspec, "/c", "call", str(self.launcher_path)],
             cwd=str(project_dir),
-            stdin=subprocess.DEVNULL,
-            stdout=self._log_handle,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
+            creationflags=flags,
         )
 
     def stop(self) -> None:
@@ -260,25 +241,19 @@ class ServerProcess:
         if process is None:
             return
         if process.poll() is None:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                    capture_output=True,
-                    creationflags=CREATE_NO_WINDOW,
-                    timeout=10,
-                    check=False,
-                )
-            else:
-                process.terminate()
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                creationflags=CREATE_NO_WINDOW,
+                timeout=10,
+                check=False,
+            )
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
         self._process = None
-        if self._log_handle is not None:
-            self._log_handle.close()
-            self._log_handle = None
 
 
 class RoundedButton(tk.Canvas):
