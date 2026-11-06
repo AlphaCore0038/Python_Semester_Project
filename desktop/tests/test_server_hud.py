@@ -1,4 +1,4 @@
-# desktop/tests/test_server_hud.py: Tests for tests.
+                                                    
 """Tests for the standalone PyServer HUD."""
 
 from __future__ import annotations

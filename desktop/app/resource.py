@@ -1,4 +1,4 @@
-# desktop/app/resource.py: Asset path resolution for source and packaged PyInstaller runs.
+                                                                                          
 """Resolve desktop assets in both source and packaged PyInstaller runs."""
 
 from __future__ import annotations

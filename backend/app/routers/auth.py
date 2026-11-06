@@ -1,4 +1,4 @@
-# backend/app/routers/auth.py: FastAPI router for auth.
+                                                       
 """Authentication routes: register, login, current-user profile, logout."""
 
 from __future__ import annotations

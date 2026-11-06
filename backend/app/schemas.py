@@ -1,4 +1,4 @@
-# backend/app/schemas.py: Request/response schema definitions.
+                                                              
 """Shared Pydantic request/response schemas (Phase 4: auth, Phase 5: documents)."""
 
 from __future__ import annotations

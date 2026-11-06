@@ -1,4 +1,4 @@
-# desktop/app/views.py: Tkinter UI views and layout.
+                                                    
 """Tkinter views: login and the documents workspace.
 
 Views own widgets and user-facing messages only; HTTP lives in

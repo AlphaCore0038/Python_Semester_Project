@@ -1,4 +1,4 @@
-# backend/app/config.py: Backend URL configuration.
+                                                   
 """Application configuration for the AI Digital Locker backend.
 
 Reads backend/.env (never committed). Secret values are validated for

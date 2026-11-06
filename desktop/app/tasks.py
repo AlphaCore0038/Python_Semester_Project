@@ -1,4 +1,4 @@
-# desktop/app/tasks.py: Background task runner helpers.
+                                                       
 """Background operations for Tkinter.
 
 Network and blocking file work runs in a small thread pool; results are

@@ -1,4 +1,4 @@
-# backend/app/ai_client.py: ai_client module.
+                                             
 """OpenRouter chat client - Cloud AI (the only working AI option, spec 12).
 
 Server-side only: the OpenRouter key never leaves backend/.env. Responses

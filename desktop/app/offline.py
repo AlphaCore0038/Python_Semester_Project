@@ -1,4 +1,4 @@
-# desktop/app/offline.py: Offline document copy helpers.
+                                                        
 """Optional local offline copies (spec section 11).
 
 Cloud storage stays primary; the user may keep per-device copies under

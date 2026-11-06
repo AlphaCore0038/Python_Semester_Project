@@ -1,4 +1,4 @@
-# backend/tests/test_demo_drill.py: Tests for tests.
+                                                    
 """Demo traffic simulator tests — mocked HTTP client; no real calls.
 
 All tests use httpx.MockTransport to simulate the FastAPI backend.

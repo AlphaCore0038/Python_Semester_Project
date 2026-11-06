@@ -1,4 +1,4 @@
-# backend/tests/test_admin.py: Tests for tests.
+                                               
 """Admin API tests — read-only endpoints, fake DB/storage, no live services."""
 
 from __future__ import annotations

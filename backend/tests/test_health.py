@@ -1,4 +1,4 @@
-# backend/tests/test_health.py: Tests for tests.
+                                                
 """Health endpoint tests — no real .env or credentials required."""
 
 from fastapi.testclient import TestClient

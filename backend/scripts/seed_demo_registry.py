@@ -1,4 +1,4 @@
-# backend/scripts/seed_demo_registry.py: Admin/seed utility script.
+                                                                   
 """Seed the Google Sheets registry with the 13-record synthetic demo dataset.
 
 This script only writes document metadata to the first worksheet of the

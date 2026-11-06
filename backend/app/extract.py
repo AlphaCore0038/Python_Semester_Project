@@ -1,4 +1,4 @@
-# backend/app/extract.py: Document extraction helpers.
+                                                      
 """Text extraction for AI context - TXT, PDF, and DOCX only.
 
 Honest by design: unsupported formats and unreadable files return a clear

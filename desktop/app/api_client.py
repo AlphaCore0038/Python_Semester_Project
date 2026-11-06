@@ -1,4 +1,4 @@
-# desktop/app/api_client.py: HTTP API client helpers.
+                                                     
 """HTTP client for the FastAPI backend (the only API the desktop uses).
 
 The backend is the sole source of truth for authentication, authorization,

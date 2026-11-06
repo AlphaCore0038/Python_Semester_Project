@@ -1,4 +1,4 @@
-# backend/app/sheets.py: Google Sheets formatting helpers.
+                                                          
 """Google Sheets reporting layer (Phase 11A).
 
 Administrative document registry/reporting layer per spec §22/§23.

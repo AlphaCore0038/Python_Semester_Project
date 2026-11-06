@@ -1,4 +1,4 @@
-# backend/tests/test_auth.py: Tests for tests.
+                                              
 """Authentication tests — in-memory fake user/session store; no real Supabase."""
 
 from __future__ import annotations

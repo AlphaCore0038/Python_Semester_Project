@@ -1,4 +1,4 @@
-# desktop/app/theme.py: Visual theme, fonts, and shared Tkinter styling.
+                                                                        
 """Shared visual tokens and ttk styling for the desktop client."""
 from __future__ import annotations
 

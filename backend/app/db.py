@@ -1,4 +1,4 @@
-# backend/app/db.py: Database session helpers.
+                                              
 """Thin users-table access via the server-side Supabase client (Phase 4).
 
 All functions run with the service-role key inside the backend only.

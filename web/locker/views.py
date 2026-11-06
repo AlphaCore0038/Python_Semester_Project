@@ -1,4 +1,4 @@
-# web/locker/views.py: Tkinter UI views and layout.
+                                                   
 """Views for the Django web client.
 
 All application operations are proxied to FastAPI via

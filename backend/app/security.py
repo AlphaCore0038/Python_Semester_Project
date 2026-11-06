@@ -1,4 +1,4 @@
-# backend/app/security.py: Security and password hashing helpers.
+                                                                 
 """Password hashing (PBKDF2) and opaque session tokens."""
 
 from __future__ import annotations

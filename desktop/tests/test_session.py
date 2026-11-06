@@ -1,4 +1,4 @@
-# desktop/tests/test_session.py: Tests for tests.
+                                                 
 """Session persistence tests: tmp paths only, no real %APPDATA% usage."""
 import json
 import time

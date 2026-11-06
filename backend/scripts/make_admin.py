@@ -1,4 +1,4 @@
-# backend/scripts/make_admin.py: Admin/seed utility script.
+                                                           
 """Owner-run administrator bootstrap (Phase 9, Milestone 1).
 
 Promotes the single existing account whose normalized email matches

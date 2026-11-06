@@ -1,4 +1,4 @@
-# web/locker/fastapi_client.py: fastapi_client module.
+                                                      
 """Single point of contact between the Django web client and FastAPI.
 
 Every FastAPI call in the web client goes through this module. Django

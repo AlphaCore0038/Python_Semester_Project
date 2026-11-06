@@ -1,4 +1,4 @@
-# backend/app/routers/ai.py: FastAPI router for ai.
+                                                   
 """AI assistant endpoints - Cloud AI via OpenRouter (spec 6, 14, 16).
 
 Every endpoint requires a valid Bearer session token; documents are accessed

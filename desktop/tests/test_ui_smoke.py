@@ -1,4 +1,4 @@
-# desktop/tests/test_ui_smoke.py: Tests for tests.
+                                                  
 """UI construction smoke tests - widgets only, no network, no mainloop."""
 import time
 from types import SimpleNamespace

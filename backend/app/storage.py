@@ -1,4 +1,4 @@
-# backend/app/storage.py: File storage helpers.
+                                               
 """Thin Supabase Storage wrapper for the private 'documents' bucket (Phase 5).
 
 Server-side only. No public URLs are ever created; downloads pass through

@@ -1,4 +1,4 @@
-# backend/app/routers/admin.py: FastAPI router for admin.
+                                                         
 """Read-only administrator routes (Phase 9, Milestone 2).
 
 Every route depends on require_admin, which re-reads users.is_admin from the

@@ -1,4 +1,4 @@
-# backend/app/main.py: FastAPI application entry point and routers.
+                                                                   
 """FastAPI application entry point."""
 
 from __future__ import annotations

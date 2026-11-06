@@ -1,4 +1,4 @@
-# desktop/app/session.py: Session persistence helpers.
+                                                      
 """Persistent local login session for the desktop client.
 
 The FastAPI session token is stored at %APPDATA%\\AiDigitalLocker\\session.json

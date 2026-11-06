@@ -1,4 +1,4 @@
-# web/locker/tests.py: Tests for locker.
+                                        
 """Django web-client tests.
 
 All HTTP calls to FastAPI are mocked at `locker.fastapi_client.requests`;

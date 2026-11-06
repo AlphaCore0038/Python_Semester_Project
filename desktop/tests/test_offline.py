@@ -1,4 +1,4 @@
-# desktop/tests/test_offline.py: Tests for tests.
+                                                 
 """Offline copy path tests (spec section 11: local copies only, no sync)."""
 from pathlib import Path
 

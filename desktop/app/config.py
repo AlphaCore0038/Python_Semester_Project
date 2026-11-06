@@ -1,4 +1,4 @@
-# desktop/app/config.py: Backend URL configuration.
+                                                   
 """Backend URL configuration for the desktop client.
 
 FASTAPI_BASE_URL is read from the process environment, then from the
@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+DEFAULT_BASE_URL = "https://collar-suspension-founder-manuals.trycloudflare.com"
 
                                               
 _REPO_ROOT = Path(__file__).resolve().parents[2]

@@ -1,4 +1,4 @@
-# backend/tests/test_ai.py: Tests for tests.
+                                            
 """AI assistant endpoint tests - provider is always mocked; no real OpenRouter."""
 
 from __future__ import annotations

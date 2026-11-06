@@ -1,4 +1,4 @@
-# backend/app/routers/documents.py: FastAPI router for documents.
+                                                                 
 """Authenticated document routes (Phase 5): upload, list, usage, download,
 rename, delete. Ownership always derives from the authenticated session user."""
 

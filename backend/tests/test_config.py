@@ -1,4 +1,4 @@
-# backend/tests/test_config.py: Tests for tests.
+                                                
 """Configuration tests — use fake env values; never read the real backend/.env."""
 
 import pytest

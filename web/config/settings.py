@@ -1,4 +1,4 @@
-# web/config/settings.py: Application settings configuration.
+                                                             
 """Django settings for the AI Digital Locker web client.
 
 Configuration comes from environment variables (web/.env, with the

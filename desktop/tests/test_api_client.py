@@ -1,4 +1,4 @@
-# desktop/tests/test_api_client.py: Tests for tests.
+                                                    
 """API client tests via httpx.MockTransport - no network, no credentials."""
 from pathlib import Path
 

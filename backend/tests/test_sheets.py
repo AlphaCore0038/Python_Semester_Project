@@ -1,4 +1,4 @@
-# backend/tests/test_sheets.py: Tests for tests.
+                                                
 """Google Sheets reporting tests — mocked Google API client; no real calls.
 
 Sheets is a secondary reporting layer: every test here verifies metadata flow

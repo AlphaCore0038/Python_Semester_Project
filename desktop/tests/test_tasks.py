@@ -1,4 +1,4 @@
-# desktop/tests/test_tasks.py: Tests for tests.
+                                               
 """Background-task runner tests with a fake scheduler (no Tk, no threads UI)."""
 import threading
 
