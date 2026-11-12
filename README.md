@@ -2,7 +2,7 @@
 
 A cloud-based personal document management application — a college-level and portfolio
 project. Users upload, organize (search/sort/filter), and download documents with an
-optional AI assistant for document understanding.
+optional AI assistant for document understanding...
 
 The full requirements live in
 [`AI_Digital_Locker_Project_Specification(2).md`](AI_Digital_Locker_Project_Specification(2).md);
